@@ -1,10 +1,7 @@
-<!DOCTYPE html>
+<!DOCTYPE html> <!-- Copyright 2015 Paul Beaudet - See licence for details -->
 
 <html>
     <head>
-        <!--
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: https://ssl.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *">
-        -->
         <meta name="format-detection" content="telephone=no">
         <meta name="msapplication-tap-highlight" content="no">
         <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
@@ -13,168 +10,163 @@
         <link rel="stylesheet" type="text/css" href="css/index.css">
         <title>Bunny Chat</title>
     </head>
-    <body onload="loadCat()">
-        <div class="app"> <!-- main container -->
-            <!-- toolbar items (logo, up dir, current dir, down dir, settings) -->
-            <div class="row">
-                <!-- company logo -->
-                <div class="col-xs-2">
-                        <img src="img/smallBunny.png" class="bg-info pull-left">
-                </div>
-                <!-- directory / catagory -->
-                <div class="col-xs-8 text-center">
-                    <button href="#" class="btn btn-success btn-lg dropdown-toggle" data-toggle="dropdown">
-                        <span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
-                        <span  class="currentDirectory"></span>
-                    </button>
-                    <!-- dropdown items-->
-                    <ul class="dropdown-menu" aria-labelled-by="dropdown-menu" type="button">
-                            <li><a href="#">Technology</a></li>
-                            <li><a href="#">Business</a></li>
-                            <li><a href="#">Food</a></li>
-                            <li><a href="#">Sex, Drugs, Rock and Roll </a></li>
-                            <li><a href="#">Politics</a></li>
-                    </ul>
-                    <!-- up directory button -->
-                    <a href="#" class="btn btn-success btn-lg">
-                            <span class="glyphicon glyphicon-chevron-up" aria-hidden="true"></span>
-                            <span class="sr-only">Up directory</span>
-                    </a>
-                </div>
-                <!-- settings -->
-                <div class="col-xs-2">
-                    <a href="#" class="btn btn-primary btn-lg pull-right">
-                        <span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true"></span>
-                        <span class="sr-only">settings</span>
-                    </a>
-                </div>
+    <body id="app">
+<!-- toolbar items (logo, up dir, current dir, down dir, settings) -->
+        <div class="row">
+            <!-- company logo -->
+            <div class="col-xs-2">
+                    <img src="img/smallBunny.png" class="bg-info pull-left">
             </div>
-            <!-- Spacer -->
-            <div class="row">
-                <div class="col-xs-12 text-center">
-                    <i>Current category</i>
-                </div>
+            <!-- directory / catagory -->
+            <div class="col-xs-8 text-center">
+                <button href="#" class="btn btn-success btn-lg dropdown-toggle" data-toggle="dropdown">
+                    <span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
+                    <span  class="dir"></span>
+                </button>
+                <!-- dropdown items-->
+                <ul class="dropdown-menu" aria-labelled-by="dropdown-menu" type="button">
+                        <li><a href="#">Technology</a></li>
+                        <li><a href="#">Business</a></li>
+                        <li><a href="#">Food</a></li>
+                        <li><a href="#">Sex, Drugs, Rock and Roll </a></li>
+                        <li><a href="#">Politics</a></li>
+                </ul>
+                <!-- up directory button -->
+                <a href="#" class="btn btn-success btn-lg">
+                        <span class="glyphicon glyphicon-chevron-up" aria-hidden="true"></span>
+                        <span class="sr-only">Up directory</span>
+                </a>
             </div>
-
-<!--             chat Ice Breaker list            -->
-            <div class="row">
-                <div class="col-xs-12">
-                    <table class="table table-hover table-striped">
-                        <tr>
-                            <th>
-                                <span id="dialog0">People ready to chat</span>
-                                <button class="btn btn-success btn-lg pull-right" id="button0" onclick="chatRandom()">
-                                    <div class="text-danger" id="perspec0">
-                                        <span id="timer0"></span>
-                                        <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
-                                        <span class="sr-only">Chat 1</span>
-                                    </div>
-                                </button>
-                            </th>
-                        </tr>
-                        <tr>
-                            <th>
-                                <span id="dialog1"></span>
-                                <button class="btn btn-success btn-lg pull-right" id="button1">
-                                    <div class="text-danger" id="perspec1">
-                                        <span id="timer1"></span>
-                                        <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
-                                        <span class="sr-only">Chat 1</span>
-                                    </div>
-                                </button>
-                            </th>
-                        </tr>
-                        <tr>
-                            <th>
-                                <span id="dialog2"></span>
-                                <button class="btn btn-success btn-lg pull-right" id="button2">
-                                    <div class="text-danger" id="perspec2">
-                                        <span id="timer2"></span>
-                                        <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
-                                        <span class="sr-only">Chat 1</span>
-                                    </div>
-                                </button>
-                            </th>
-                        </tr>
-                        <tr>
-                            <th>
-                                <span id="dialog3"></span>
-                                <button class="btn btn-success btn-lg pull-right" id="button3">
-                                    <div class="text-danger" id="perspec3">
-                                        <span id="timer3"></span>
-                                        <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
-                                        <span class="sr-only">Chat 1</span>
-                                    </div>
-                                </button>
-                            </th>
-                        </tr>
-                        <tr>
-                            <th>
-                                <span id="dialog4"></span>
-                                <button class="btn btn-success btn-lg pull-right" id="button4">
-                                    <div class="text-danger" id="perspec4">
-                                        <span id="timer4"></span>
-                                        <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
-                                        <span class="sr-only">Chat 1</span>
-                                    </div>
-                                </button>
-                            </th>
-                        </tr>
-                        <tr>
-                            <th>
-                                <span id="dialog5"></span>
-                                <button class="btn btn-success btn-lg pull-right" id="button5">
-                                    <div class="text-danger" id="perspec5">
-                                        <span id="timer5"></span>
-                                        <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
-                                        <span class="sr-only">Chat 1</span>
-                                    </div>
-                                </button>
-                            </th>
-                        </tr>
-                    </table>
-                </div>
+            <!-- settings -->
+            <div class="col-xs-2">
+                <a href="#" class="btn btn-primary btn-lg pull-right">
+                    <span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true"></span>
+                    <span class="sr-only">settings</span>
+                </a>
             </div>
-<!-- premium placement -->
-            <div class="row">
-                <div class="col-xs-12">
-                    <button class="btn btn-primary center-block" onclick="window.location = 'upsell.html'">
-                        <span id="upsell">Want to create topics?</span>
-                        <span  class="bg-danger text-success">Subscribe Now!</span>
-                    </button>
-                </div>
+        </div> <!-- end top tool bar -->
+        <!-- Spacer -->
+        <div class="row">
+            <div class="col-xs-12 text-center">
+                <i>Current category</i>
             </div>
-            <!-- Spacer -->
-            <div class="row">
-                <div class="col-xs-12 text-center">
-                    <i>Upgrade to Premium service</i>
-                </div>
-            </div>
-<!-- chat bar -->
-            <div class="navbar navbar-inverse navbar-fixed-bottom" role="navigation">
-                <div class="navbar-text pull left">
-                    <div class="form-group">
-                        <div class="col-xs-12 input-group input-group-lg">
-                            <span class="input-group-addon">
-                                <span class="currentDirectory"></span>
-                                <i class="glyphicon glyphicon-comment"></i>
-                            </span>
-                            <input type="text" class="form-control" id="textEntry">
-                            <span class="input-group-btn" onclick="sendMes()">
-                                <button class="btn btn-info btn-lg pull-right" type="button" id="breakiceButton">
-                                    <span id="sendText">Break Ice</span>
-                                    <span id="sendTimer"></span>
-                                    <span class="glyphicon glyphicon-hand-right" aria-hidden="true"></span>
+        </div>
+<!-- chat Ice Breaker list -->
+        <div class="row">
+            <div class="col-xs-12">
+                <table class="table table-hover table-striped">
+                    <tr>
+                        <th>
+                            <span id="dialog0">People ready to chat</span>
+                            <button class="btn btn-success btn-lg pull-right" id="button0">
+                                <div class="text-danger" id="perspec0">
+                                    <span id="timer0"></span>
+                                    <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
                                     <span class="sr-only">Chat 1</span>
-                                </button>
-                            </span>
-                        </div>
+                                </div>
+                            </button>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th>
+                            <span id="dialog1"></span>
+                            <button class="btn btn-success btn-lg pull-right" id="button1">
+                                <div class="text-danger" id="perspec1">
+                                    <span id="timer1"></span>
+                                    <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
+                                    <span class="sr-only">Chat 1</span>
+                                </div>
+                            </button>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th>
+                            <span id="dialog2"></span>
+                            <button class="btn btn-success btn-lg pull-right" id="button2">
+                                <div class="text-danger" id="perspec2">
+                                    <span id="timer2"></span>
+                                    <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
+                                    <span class="sr-only">Chat 1</span>
+                                </div>
+                            </button>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th>
+                            <span id="dialog3"></span>
+                            <button class="btn btn-success btn-lg pull-right" id="button3">
+                                <div class="text-danger" id="perspec3">
+                                    <span id="timer3"></span>
+                                    <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
+                                    <span class="sr-only">Chat 1</span>
+                                </div>
+                            </button>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th>
+                            <span id="dialog4"></span>
+                            <button class="btn btn-success btn-lg pull-right" id="button4">
+                                <div class="text-danger" id="perspec4">
+                                    <span id="timer4"></span>
+                                    <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
+                                    <span class="sr-only">Chat 1</span>
+                                </div>
+                            </button>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th>
+                            <span id="dialog5"></span>
+                            <button class="btn btn-success btn-lg pull-right" id="button5">
+                                <div class="text-danger" id="perspec5">
+                                    <span id="timer5"></span>
+                                    <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
+                                    <span class="sr-only">Chat 1</span>
+                                </div>
+                            </button>
+                        </th>
+                    </tr>
+                </table>
+            </div>
+        </div>
+<!-- premium placement -->
+        <div class="row">
+            <div class="col-xs-12">
+                <button class="btn btn-primary center-block" id="upsellButton">
+                    <span id="upsell">Want to create topics?</span>
+                    <span  class="bg-danger text-success">Subscribe Now!</span>
+                </button>
+            </div>
+        </div>
+        <!-- Spacer -->
+        <div class="row">
+            <div class="col-xs-12 text-center">
+                <i>Upgrade to Premium service</i>
+            </div>
+        </div>
+<!-- chat bar -->
+        <div class="navbar navbar-inverse navbar-fixed-bottom" role="navigation">
+            <div class="navbar-text pull left">
+                <div class="form-group">
+                    <div class="col-xs-12 input-group input-group-lg">
+                        <span class="input-group-addon">
+                            <span class="dir"></span>
+                            <i class="glyphicon glyphicon-comment"></i>
+                        </span>
+                        <input type="text" class="form-control" id="textEntry">
+                        <span class="input-group-btn" id="sendButton">
+                            <button class="btn btn-info btn-lg pull-right" type="button" id="breakiceButton">
+                                <span id="sendText">Break Ice</span>
+                                <span id="sendTimer"></span>
+                                <span class="glyphicon glyphicon-hand-right" aria-hidden="true"></span>
+                                <span class="sr-only">Chat 1</span>
+                            </button>
+                        </span>
                     </div>
                 </div>
             </div>
-
-        </div>
-
+        </div> <!-- end chat footer -->
         <!-- Javescript dependencies -->
         <script src="bower_components/jquery/dist/jquery.min.js"></script>
         <script src="bower_components/socket.io-1.3.5/index.js"</script>
