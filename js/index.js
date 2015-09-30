@@ -24,29 +24,18 @@ var timing = {
             setTimeout(timing.send, 1000);
         }
     },
-    countDown: function(timerNumber){
+    countDown: function(timerNumber, ondone){
         if (timing.counter[timerNumber]) {
             timing.counter[timerNumber]--;
             var crntCount = "T-" + timing.counter[timerNumber].toString();
             document.getElementById("timer" + timerNumber.toString()).innerHTML = crntCount;
-            setTimeout(function(){timing.countDown(timerNumber);}, 1000);
+            setTimeout(function(){timing.countDown(timerNumber, ondone);}, 1000);
         } else {
             document.getElementById("button"+ timerNumber.toString()).style.visibility = "hidden";
             document.getElementById("timer" + timerNumber.toString()).innerHTML = "";
             document.getElementById("dialog" + timerNumber.toString()).innerHTML = "";
             timing.counter[timerNumber] = WAIT_TIME;
-        }
-    },
-    highestPos: function(){
-        if(timing.counter[timing.pos] === WAIT_TIME){
-            var rt = timing.pos
-            timing.countDown(timing.pos);
-            timing.pos = 1; // start at highest next time
-            return rt;
-        } else {
-            timing.pos++;
-            if (timing.pos === NUM_ENTRIES){timing.pos = 1;}
-            return timing.highestPos(); // keep trying till you find the highest pos
+            ondone();
         }
     },
     reset: function(){
@@ -109,44 +98,31 @@ var send = {
     reply: function(){ // called on pressing enter or send
         if ( timing.sendClock < WAIT_TIME ){ timing.sendClock = WAIT_TIME + 1; }
         // if the clock is run down, set it to a unique number so it can reset within the second
-        document.getElementById("textEntry").value = ""; // empty text entry string
         send.empty = true;                               // note that the text entry string is emtpy
         trans.increment(); // increment row number to edit
         //toOther();
     },
     realTime: function(event){  // called for every change in input
         if(send.mode === 0){
-            if(send.empty){sock.et.emit('iceStart'); send.empty = false;}
-            send.keyAction("breaking", event);
+            if(send.empty){send.empty = false;}
+            sock.et.emit("breaking", String.fromCharCode(event.charCode));
         }else if(send.mode === 1){
             if(send.empty){trans.typeOnStart(); send.empty = false;}// account for nessisary transitions
-            send.keyAction("chat", event);
+            sock.et.emit("chat", String.fromCharCode(event.charCode));
         }else if(send.mode === 2){
             document.getElementById("textEntry").value = "";
         } // block if other's turn
     },
-    keyAction: function(printAction, event){
-        var input = (event.which) ? event.which : event.keyCode; // if letter hold letter else hold code
-        var printable = String.fromCharCode(input);
-        if(printable){
-            sock.et.emit(printAction, printable);
-        }
-        else if(input === 13){send.passOn();} // enter case
+    nonPrint: function(event){
+        if(event.which == 13){send.passOn();}
+        if(event.which == 8){sock.et.emit('bck');}
     },
     passOn: function(){
-        if(send.mode === 0){send.breaker();}
+        if(send.mode === 0){sock.break();}
         else if (send.mode === 1){send.reply();}
-        else if (send.mode === 2){document.getElementById("textEntry").value = "";}
-    },
-    breaker: function(text){
-        var pos = timing.highestPos(); // set timer for highest pos
-        document.getElementById("button"+ pos.toString()).style.visibility = "visible";
-        if(text){ // external case : future
-            document.getElementById("dialog"+pos.toString()).innerHTML = text;
-        } else {  // intrenal case : legacy
-            document.getElementById("dialog"+pos.toString()).innerHTML = document.getElementById("textEntry").value;
-            document.getElementById("textEntry").value = "";
-        }
+        else if (send.mode === 2){;}
+        document.getElementById("textEntry").value = "";
+        send.empty = true;
     }
 }
 
@@ -178,6 +154,11 @@ function iceInstance(row){
     };
     this.breakOn = function(user){
         document.getElementById("button"+ this.row.toString()).style.visibility = "visible";
+        send.mode = 2;
+        timing.countDown(this.row, this.onDone);
+    };
+    this.onDone = function(){
+        send.mode = 0;
     }
 }
 
@@ -189,7 +170,7 @@ var breaker = {
     },
     rtt: function(rtt){
         for(var i = 1; i < NUM_ENTRIES; i++){ // search to see if that user exist
-            if (breaker.list[i].usr && breaker.list[i].usr === rtt.user){ // match with a user we already have
+            if (breaker.list[i].usr === rtt.user){ // match with a user we already have
                 breaker.list[i].breaking(rtt); // start breaking ice
                 return; // found a user currently talking to concat the letter to
             }
@@ -200,6 +181,23 @@ var breaker = {
                 return; // return when an inactive row was found
             }
         } // loop only exits when there was no inactive row, in which case there is no room for this user
+    },
+    post: function(user){
+        for(var i = 1; i < NUM_ENTRIES; i++){ // search to see if that user exist
+            if (breaker.list[i].usr === user){ // match with a user we already have
+                breaker.list[i].breakOn(); // start breaking ice
+                return; // found a user currently talking to concat the letter to
+            }
+        }
+    },
+    rm: function(user){
+       for(var i = 1; i < NUM_ENTRIES; i++){ // search to see if that user exist
+            if (breaker.list[i].usr === user){ // match with a user we already have
+                var del = document.getElementById("dialog"+ i.toString()).innerHTML.replace(/(\s+)?.$/, '');
+                document.getElementById("dialog"+ i.toString()).innerHTML = del;
+                return; // found a user currently talking to concat the letter to
+            }
+        }
     }
 }
 
@@ -216,7 +214,11 @@ var sock = {
     handle: function (){
         sock.et.on('breakRTT', breaker.rtt); // print breaker to the correct row; needs object that holds user and letter
         // recieves real time text for breakers
-        //sock.et.on('post', ); // starts timer and stores user of breaker
+        sock.et.on('post', breaker.post); // starts timer and stores user of breaker
+        sock.et.on('rm', breaker.rm);
+    },
+    break: function(usr){
+        sock.et.emit('post', usr);
     }
 }
 
@@ -230,6 +232,7 @@ var app = {
             app.updateDir();     // indicate currant directory
             app.hideEnteries(1); // default is set for zeroth entry (people availible)
             document.getElementById("textEntry").onkeypress = send.realTime; // set the text bar to send data
+            document.getElementById("textEntry").onkeydown = send.nonPrint;  // deal with non-printable input
             document.getElementById("sendButton").onclick = send.passOn;
             document.getElementById("upsellButton").onclick = function(){window.location = 'upsell.html'};
             timing.reset(); // set default countdown time for each breaker

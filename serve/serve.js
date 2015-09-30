@@ -33,6 +33,12 @@ var sock = {
                 // match.breaker(socket);
                 sock.io.emit('breakRTT', rtt); //emit to one random user, we can start with everyone though
             });
+            socket.on("post", function(){
+                sock.io.emit("post", socket.id); // emit the conclusion of an ice breaker composition
+            });
+            socket.on('bck', function(){
+                sock.io.emit('rm', socket.id);
+            });
         });
     }
 }
