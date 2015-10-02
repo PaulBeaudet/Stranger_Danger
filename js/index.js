@@ -109,16 +109,20 @@ var send = {
         }else if(send.mode === 1){
             if(send.empty){trans.typeOnStart(); send.empty = false;}// account for nessisary transitions
             sock.et.emit("chat", String.fromCharCode(event.charCode));
-        }else if(send.mode === 2){
-            document.getElementById("textEntry").value = "";
-        } // block if other's turn
+        }else if(send.mode === 2){document.getElementById("textEntry").value = "";} // block if other's turn
     },
     nonPrint: function(event){
-        if(event.which == 13){send.passOn();}
-        if(event.which == 8){sock.et.emit('bck');}
+        if(send.mode === 0){
+            if(event.which == 13){send.passOn();}
+            if(event.which == 8){sock.et.emit('bck');}
+        }else if(send.mode === 1){;
+        }else if(send.mode === 2){document.getElementById("textEntry").value = "";} // block if other's turn
     },
     passOn: function(){
-        if(send.mode === 0){sock.break();}
+        if(send.mode === 0){
+            sock.break();
+            send.mode = 2;
+        }
         else if (send.mode === 1){send.reply();}
         else if (send.mode === 2){;}
         document.getElementById("textEntry").value = "";
@@ -154,11 +158,12 @@ function iceInstance(row){
     };
     this.breakOn = function(user){
         document.getElementById("button"+ this.row.toString()).style.visibility = "visible";
-        send.mode = 2;
         timing.countDown(this.row, this.onDone);
     };
     this.onDone = function(){
         send.mode = 0;
+        this.user = "";
+        this.inactive = true;
     }
 }
 
