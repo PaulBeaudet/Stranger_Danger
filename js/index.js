@@ -154,7 +154,7 @@ var send = {
             if(send.empty){trans.typeOnStart(); send.empty = false;}// account for nessisary transitions
             trans.type({text: String.fromCharCode(event.charCode), row: 0});
             sock.et.emit("chat", {text: String.fromCharCode(event.charCode), id: send.to});
-        }else if(send.mode === 2){document.getElementById("textEntry").value = "";} // block if other's turn
+        }
     },
     nonPrint: function(event){
         if(send.mode === 0){
@@ -166,7 +166,7 @@ var send = {
                 sock.et.emit('rmv', send.to);
                 trans.rm();
             }
-        }else if(send.mode === 2){document.getElementById("textEntry").value = "";} // block if other's turn
+        }
     },
     passOn: function(){
         if(send.mode === 0){
@@ -186,7 +186,8 @@ var send = {
         }
         document.getElementById("textEntry").value = "";
         send.empty = true;
-    }
+    },
+    block: function(){if(send.mode === 2){document.getElementById("textEntry").value = "";}}
 }
 
 // recieving logic - non-robot
@@ -295,6 +296,7 @@ var app = {
             app.hideEnteries(1); // default is set for zeroth entry (people availible)
             document.getElementById("textEntry").onkeypress = send.realTime; // set the text bar to send data
             document.getElementById("textEntry").onkeydown = send.nonPrint;  // deal with non-printable input
+            document.getElementById("textEntry").oninput = send.block;      // block when not user's turn
             document.getElementById("sendButton").onclick = send.passOn;
             document.getElementById("upsellButton").onclick = function(){window.location = 'upsell.html'};
             timing.clear();                       // set default countdown time for each breaker
