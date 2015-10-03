@@ -9,6 +9,7 @@ var SERVER = 'http://192.168.1.133:3000';
 var timing = {
     counter: [], // one exist per row
     sendClock: WAIT_TIME,
+    timers: [],
     send: function(action){
         if(timing.sendClock === WAIT_TIME + 1){
             document.getElementById("sendTimer").innerHTML = "";
@@ -23,22 +24,27 @@ var timing = {
             setTimeout(function(){timing.send(action)}, 1000);
         }
     },
-    countDown: function(timerNumber, ondone){
-        if (timing.counter[timerNumber]) {
-            timing.counter[timerNumber]--;
-            var crntCount = "T-" + timing.counter[timerNumber].toString();
-            document.getElementById("timer" + timerNumber.toString()).innerHTML = crntCount;
-            setTimeout(function(){timing.countDown(timerNumber, ondone);}, 1000);
+    countDown: function(pos, ondone){
+        if (timing.counter[pos]) {
+            timing.counter[pos]--;
+            var crntCount = "T-" + timing.counter[pos].toString();
+            document.getElementById("timer" + pos.toString()).innerHTML = crntCount;
+            timing.timers[pos] = setTimeout(function(){timing.countDown(pos, ondone);}, 1000);
         } else {
-            document.getElementById("button"+ timerNumber.toString()).style.visibility = "hidden";
-            document.getElementById("timer" + timerNumber.toString()).innerHTML = "";
-            document.getElementById("dialog" + timerNumber.toString()).innerHTML = "";
-            timing.counter[timerNumber] = WAIT_TIME;
+            document.getElementById("button"+ pos.toString()).style.visibility = "hidden";
+            document.getElementById("timer" + pos.toString()).innerHTML = "";
+            document.getElementById("dialog" + pos.toString()).innerHTML = "";
+            timing.counter[pos] = WAIT_TIME;
             ondone();
         }
     },
     reset: function(){for (var i = 0; i < NUM_ENTRIES; i++){timing.counter[i] = WAIT_TIME;}},
-    zero: function(){for (var i = 0; i < NUM_ENTRIES; i++){timing.counter[i] = 0;}}
+    clear: function(){
+        for (var i = 1; i < NUM_ENTRIES; i++){
+            if(timing.timers[i]){clearTimeout(timing.timers[i]);}
+            timing.counter[i] = WAIT_TIME;
+        }
+    }
 }
 
 // transition handling of visual elements
@@ -68,7 +74,7 @@ var trans = {
         document.getElementById("sendText").innerHTML = "To other";
         document.getElementById("button0").style.visibility = "hidden";
         app.hideEnteries(1);      // cut out existing dialog
-        timing.reset();           // make sure clocks are no longer running?
+        timing.clear();           // make sure clocks are no longer running?
     },
     typeOnStart: function(){
         if(trans.editRow === NUM_ENTRIES){
