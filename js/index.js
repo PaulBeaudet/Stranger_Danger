@@ -59,28 +59,21 @@ var trans = {
         while (nextNumber < NUM_ENTRIES) {
             var dialog = document.getElementById("dialog" + nextNumber.toString()).innerHTML;
             document.getElementById("dialog" + prevNumber.toString()).innerHTML = dialog;
-            var perspec = document.getElementById("perspec" + nextNumber.toString()).innerHTML;
-            document.getElementById("perspec"+ prevNumber.toString()).innerHTML = perspec;
+            var perspec = document.getElementById("timer" + nextNumber.toString()).innerHTML;
+            document.getElementById("timer"+ prevNumber.toString()).innerHTML = perspec;
             prevNumber++; nextNumber++;
         }
         var lastEntry = NUM_ENTRIES - 1; // make room for next entry
         document.getElementById("dialog" + lastEntry.toString()).innerHTML = "";
-        document.getElementById("perspec"+ lastEntry.toString()).innerHTML = "";
-    },
-    toChat: function(headline){
-        document.getElementById("dialog0").innerHTML = headline;
-        document.getElementById("sendText").innerHTML = "To other";
-        document.getElementById("button0").style.visibility = "hidden";
-        app.hideEnteries(1);      // cut out existing dialog
-        timing.clear();           // make sure clocks are no longer running?
+        document.getElementById("timer"+ lastEntry.toString()).innerHTML = "";
     },
     typeOnStart: function(){
         if(trans.editRow === NUM_ENTRIES){
             trans.scootDialog();
             trans.editRow--;
         }  // checks to see if a scoot is needed upon typing
-        document.getElementById("perspec"+ trans.editRow.toString()).style.visibility = "visible";
-        document.getElementById("perspec"+ trans.editRow.toString()).innerHTML = "You";
+        document.getElementById("timer"+ trans.editRow.toString()).style.visibility = "visible";
+        document.getElementById("timer"+ trans.editRow.toString()).innerHTML = "You";
     },
     selBreak: function(){  // respond to someone else's ice-breaker
         send.mode = 1; // signal to the sender that is it now time to chat
@@ -88,18 +81,14 @@ var trans = {
         var user = breaker.list[parseInt(row)].usr;
         send.to = user;
         sock.et.emit("selBreak", user); // signal which user that needs to be connected with
-        trans.toChat(document.getElementById("dialog" + row).innerHTML); // pass in headline text
-        document.getElementById("perspec0").style.visibility = "visible";
-        document.getElementById("perspec0").innerHTML = "other";
+        trans.ition({perspec: "other", head: document.getElementById("dialog" + row).innerHTML});
         timing.send(send.passOn); // set stopwatch for sending a message
     },
     gotBreak: function(user){         // someone responded to users personal breaker
         send.mode = 2;                // signal user is listening to someones response
         send.to = user;               // keep track of who we are talking to
         var myRow = breaker.getRow(); // find row by socket personal socket.id
-        trans.toChat(document.getElementById("dialog" + myRow).innerHTML); // pass in headline text
-        document.getElementById("perspec0").style.visibility = "visible";
-        document.getElementById("perspec0").innerHTML = "you";
+        trans.ition({perspec: "you", head: document.getElementById("dialog" + myRow).innerHTML});
     },
     type: function(data){
         var thisRow = 0;
@@ -114,8 +103,8 @@ var trans = {
     },
     myTurn: function(){
         send.mode = 1;            // allow user to type
-        document.getElementById("perspec"+ trans.editRow.toString()).style.visibility = "visible";
-        document.getElementById("perspec"+ trans.editRow.toString()).innerHTML = "other";
+        document.getElementById("timer"+ trans.editRow.toString()).style.visibility = "visible";
+        document.getElementById("timer"+ trans.editRow.toString()).innerHTML = "other";
         trans.increment();        // increment place to write to
         timing.send(send.passOn); // time out input
     },
@@ -125,16 +114,21 @@ var trans = {
         var del = document.getElementById("dialog" + place).innerHTML.replace(/(\s+)?.$/, '');
         document.getElementById("dialog" + place).innerHTML = del;
     },
-    home: function(){
-        document.getElementById("perspec0").style.visibility = "hidden";
-        document.getElementById("perspec0").innerHTML = "";
-        document.getElementById("button0").style.visibility = "visible";
-        document.getElementById("dialog0").innerHTML = "People ready to chat";
-        for(var i = 1; i < NUM_ENTRIES; i++){
-            document.getElementById("perspec" + i.toString()).style.visibility = "hidden";
+    ition: function(op){
+        if(op.perspec){
+            document.getElementById("button0").style.visibility = "hidden";
+            document.getElementById("timer0").style.visibility = "visible";
+            document.getElementById("sendText").innerHTML = "To other";
+        } else {
+            document.getElementById("sendText").innerHTML = "Break ice";
+            document.getElementById("button0").style.visibility = "visible";
+        }
+        document.getElementById("timer0").innerHTML = op.perspec;
+        document.getElementById("dialog0").innerHTML = op.head;
+        for(var i = 1; i < NUM_ENTRIES; i++){ // reset entries
             document.getElementById("button" + i.toString()).style.visibility = "hidden";
             document.getElementById("dialog" + i.toString()).innerHTML = "";
-            document.getElementById("perspec" + i.toString()).innerHTML = "";
+            document.getElementById("timer" + i.toString()).innerHTML = "";
         }
         timing.clear();
     }
@@ -175,7 +169,8 @@ var send = {
         } else if (send.mode === 1){
             if(send.empty){
                 sock.et.emit('endChat', send.to);
-                trans.home();  // trasition back to home screen
+                trans.ition({perspec: "", head:"People ready to chat"});
+                // trasition back to home screen
                 send.mode = 0;    // reset into breaker mode
             } else {
                 sock.et.emit('toOther', send.to);
@@ -253,9 +248,6 @@ var breaker = {
         for(var i = 1; i < NUM_ENTRIES; i++){  // search to see if that user exist
             if (breaker.list[i].usr === sock.et.id){return i;} // match with a user we already have
         }
-    },
-    getUser: function(row){ // returns user of row
-        return breaker.list[row].usr; // match with a user we already have
     }
 }
 
@@ -279,7 +271,7 @@ var sock = {
         sock.et.on('yourTurn', trans.myTurn);
         sock.et.on('rmv', trans.rm);
         sock.et.on('endChat', function(){
-            trans.home();
+            trans.ition({perspec: "", head:"People ready to chat"});
             send.mode = 0;
         });
     }
@@ -293,13 +285,12 @@ var app = {
     init: function () {
         document.getElementById("app").onload = function () {
             app.updateDir();     // indicate currant directory
-            app.hideEnteries(1); // default is set for zeroth entry (people availible)
+            trans.ition({perspec: "", head:"People ready to chat"});
             document.getElementById("textEntry").onkeypress = send.realTime; // set the text bar to send data
             document.getElementById("textEntry").onkeydown = send.nonPrint;  // deal with non-printable input
             document.getElementById("textEntry").oninput = send.block;      // block when not user's turn
             document.getElementById("sendButton").onclick = send.passOn;
             document.getElementById("upsellButton").onclick = function(){window.location = 'upsell.html'};
-            timing.clear();                       // set default countdown time for each breaker
             app.buttonActions(trans.selBreak);     // set button actions
             sock.connect();                       // connect socket to server
             breaker.init();                       // create breaker objects to manipulate
@@ -311,16 +302,8 @@ var app = {
             dir[i].innerHTML = this.directory;
         }
     },
-    buttonActions: function(action) {
-        for(var i = 1; i < NUM_ENTRIES; i++){ // actions for selection of breaker
-            document.getElementById("button" + i).onclick = action;
-        }
-    },
-    hideEnteries: function (startOn) {
-        for(var i = startOn; i < NUM_ENTRIES; i++){
-            document.getElementById("button"+ i.toString()).style.visibility = "hidden";
-            document.getElementById("dialog"+ i.toString()).innerHTML = "";
-        }
+    buttonActions: function(action) { // actions for selection of breaker
+        for(var i = 1; i < NUM_ENTRIES; i++){ document.getElementById("button" + i).onclick = action; }
     }
 };
 
