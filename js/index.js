@@ -3,25 +3,23 @@
 var WAIT_TIME = 30;  // time to wait for talking turn
 var NUM_ENTRIES = 6; // number of dialog rows allowed in the application
 var SERVER = 'http://192.168.1.133:3000';
+var NUM_TIMERS = NUM_ENTRIES + 1; // timer 6 is for the send button
+// call NUM_ENTRIES for send button timer
 
 // timer logic
 
 var timing = {
-    counter: [], // one exist per row
-    sendClock: WAIT_TIME,
-    timers: [],
+    counter: [], // one exist per row, last is send timer
+    timers: [],  // IDs of timers in case clear is needed
     send: function(action){
-        if(timing.sendClock === WAIT_TIME + 1){
+        if(timing.counter[NUM_ENTRIES] === 0){
             document.getElementById("sendTimer").innerHTML = "";
-            timing.sendClock = WAIT_TIME;
-        } else if(timing.sendClock === 0){
-            document.getElementById("sendTimer").innerHTML = "";
-            timing.sendClock = WAIT_TIME;
+            timing.counter[NUM_ENTRIES] = WAIT_TIME;
             if(action){action();} // given argument make an action after aloted time
         } else {
-            document.getElementById("sendTimer").innerHTML = "T-" + timing.sendClock.toString();
-            timing.sendClock--;
-            setTimeout(function(){timing.send(action)}, 1000);
+            document.getElementById("sendTimer").innerHTML = "T-" + timing.counter[NUM_ENTRIES].toString();
+            timing.counter[NUM_ENTRIES]--;
+            timing.timers[NUM_ENTRIES] = setTimeout(function(){timing.send(action)}, 1000);
         }
     },
     countDown: function(pos, ondone){
@@ -38,12 +36,12 @@ var timing = {
             ondone();
         }
     },
-    reset: function(){for (var i = 0; i < NUM_ENTRIES; i++){timing.counter[i] = WAIT_TIME;}},
     clear: function(){
-        for (var i = 1; i < NUM_ENTRIES; i++){
-            if(timing.timers[i]){clearTimeout(timing.timers[i]);}
-            timing.counter[i] = WAIT_TIME;
+        for (var i = 1; i < NUM_TIMERS; i++){
+            if(timing.timers[i]){clearTimeout(timing.timers[i]);} // deactivate active timeouts
+            timing.counter[i] = WAIT_TIME;                        // reset timeouts
         }
+        document.getElementById("sendTimer").innerHTML = "";
     }
 }
 
@@ -126,6 +124,19 @@ var trans = {
         if(row){place = row.toString();}else{place = trans.editRow.toString();}
         var del = document.getElementById("dialog" + place).innerHTML.replace(/(\s+)?.$/, '');
         document.getElementById("dialog" + place).innerHTML = del;
+    },
+    home: function(){
+        document.getElementById("perspec0").style.visibility = "hidden";
+        document.getElementById("perspec0").innerHTML = "";
+        document.getElementById("button0").style.visibility = "visible";
+        document.getElementById("dialog0").innerHTML = "People ready to chat";
+        for(var i = 1; i < NUM_ENTRIES; i++){
+            document.getElementById("perspec" + i.toString()).style.visibility = "hidden";
+            document.getElementById("button" + i.toString()).style.visibility = "hidden";
+            document.getElementById("dialog" + i.toString()).innerHTML = "";
+            document.getElementById("perspec" + i.toString()).innerHTML = "";
+        }
+        timing.clear();
     }
 }
 
@@ -135,11 +146,6 @@ var send = {
     empty: true,
     mode: 0,
     to: '', // potential user id
-    reply: function(){ // called on pressing enter or send
-        if ( timing.sendClock < WAIT_TIME ){ timing.sendClock = WAIT_TIME + 1; } // given time remains
-        // if the clock is run down, set it to a unique number so it can reset within the second
-        trans.increment(); // increment row number to edit
-    },
     realTime: function(event){  // called for every change in input
         if(send.mode === 0){
             if(send.empty){send.empty = false;}
@@ -163,13 +169,21 @@ var send = {
         }else if(send.mode === 2){document.getElementById("textEntry").value = "";} // block if other's turn
     },
     passOn: function(){
-        if(send.mode === 0){sock.et.emit('post');}
-        else if (send.mode === 1){
-            sock.et.emit('toOther', send.to);
-            if ( timing.sendClock < WAIT_TIME ){ timing.sendClock = WAIT_TIME + 1; } // given time remains
-            trans.increment(); // increment row number to edit
+        if(send.mode === 0){
+            sock.et.emit('post');
+            send.mode = 2;
+        } else if (send.mode === 1){
+            if(send.empty){
+                sock.et.emit('endChat', send.to);
+                trans.home();  // trasition back to home screen
+                send.mode = 0;    // reset into breaker mode
+            } else {
+                sock.et.emit('toOther', send.to);
+                trans.increment(); // increment row number to edit
+                send.mode = 2;
+            }
+            timing.clear();
         }
-        send.mode = 2;
         document.getElementById("textEntry").value = "";
         send.empty = true;
     }
@@ -263,6 +277,10 @@ var sock = {
         sock.et.on('toMe', trans.type);
         sock.et.on('yourTurn', trans.myTurn);
         sock.et.on('rmv', trans.rm);
+        sock.et.on('endChat', function(){
+            trans.home();
+            send.mode = 0;
+        });
     }
 }
 
@@ -279,7 +297,7 @@ var app = {
             document.getElementById("textEntry").onkeydown = send.nonPrint;  // deal with non-printable input
             document.getElementById("sendButton").onclick = send.passOn;
             document.getElementById("upsellButton").onclick = function(){window.location = 'upsell.html'};
-            timing.reset();                       // set default countdown time for each breaker
+            timing.clear();                       // set default countdown time for each breaker
             app.buttonActions(trans.selBreak);     // set button actions
             sock.connect();                       // connect socket to server
             breaker.init();                       // create breaker objects to manipulate

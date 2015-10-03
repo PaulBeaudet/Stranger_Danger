@@ -54,6 +54,9 @@ var sock = {
             socket.on('disconnect', function(){
                console.log(socket.id.toString() + " disconnected");
             });
+            socket.on('endChat', function(id){
+                sock.io.to(id).emit('endChat');
+            })
         });
     }
 }
