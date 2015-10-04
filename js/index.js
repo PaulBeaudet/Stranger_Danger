@@ -53,7 +53,7 @@ var edit = { // Methods revolving around tracking possition of row
         else if ( edit.row === NUM_ENTRIES - 2){ edit.row = NUM_ENTRIES - 1; }
         else if ( edit.row < NUM_ENTRIES + 1)  { trans.scootDialog(); }
     },
-    onStart: function(){
+    onStart: function(){ // called when starting a message
         if(edit.row === NUM_ENTRIES){
             trans.scootDialog();
             edit.row--;
@@ -114,7 +114,6 @@ var trans = {
         send.to = user;               // keep track of who we are talking to
         var myRow = breaker.getRow(); // find row by socket personal socket.id
         trans.ition({perspec: "you", head: document.getElementById("textEntry").value});
-        document.getElementById("textEntry").value = "";
     },
     ition: function(op){
         if(op.perspec){
@@ -132,7 +131,9 @@ var trans = {
             document.getElementById("dialog" + i.toString()).innerHTML = "";
             document.getElementById("timer" + i.toString()).innerHTML = "";
         }
+        document.getElementById("textEntry").value = "";
         timing.clear();
+        edit.row = 1;
     }
 }
 
@@ -276,7 +277,6 @@ var sock = {
         sock.et.on('rmv', edit.rm);
         sock.et.on('endChat', function(){
             trans.ition({perspec: "", head:"People ready to chat"});
-            document.getElementById("textEntry").value = "";
             send.mode = 0;
         });
     }
