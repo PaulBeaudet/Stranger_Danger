@@ -46,16 +46,48 @@ var timing = {
 }
 
 // transition handling of visual elements
-var trans = {
-    editRow: 1, // holds which row is to writen to on new message
+var edit = { // Methods revolving around tracking possition of row
+    row: 1,
     increment: function(){ // decides with row to edit to and when the dialog needs to scoot up
-        if(trans.editRow < NUM_ENTRIES - 2)         { trans.editRow++; }
-        else if ( trans.editRow === NUM_ENTRIES - 2){ trans.editRow = NUM_ENTRIES - 1; }
-        else if ( trans.editRow < NUM_ENTRIES + 1)  { trans.scootDialog(); }
+        if(edit.row < NUM_ENTRIES - 2)         { edit.row++; }
+        else if ( edit.row === NUM_ENTRIES - 2){ edit.row = NUM_ENTRIES - 1; }
+        else if ( edit.row < NUM_ENTRIES + 1)  { trans.scootDialog(); }
     },
+    onStart: function(){
+        if(edit.row === NUM_ENTRIES){
+            trans.scootDialog();
+            edit.row--;
+        }  // checks to see if a scoot is needed upon typing
+        document.getElementById("timer"+ edit.row.toString()).style.visibility = "visible";
+        document.getElementById("timer"+ edit.row.toString()).innerHTML = "You";
+    },
+    type: function(data){
+        var thisRow = 0;
+        if(data.row){thisRow = data.row.toString();}
+        else{thisRow = edit.row.toString();}
+        var existing = document.getElementById("dialog" + thisRow).innerHTML;
+        if(existing){document.getElementById("dialog" + thisRow).innerHTML = existing + data.text;}
+        else{document.getElementById("dialog" + thisRow).innerHTML = data.text;}
+    },
+    myTurn: function(){
+        send.mode = 1;            // allow user to type
+        document.getElementById("timer"+ edit.row.toString()).style.visibility = "visible";
+        document.getElementById("timer"+ edit.row.toString()).innerHTML = "other";
+        edit.increment();        // increment place to write to
+        timing.send(send.passOn); // time out input
+    },
+    rm: function(row){
+        var place = 0;
+        if(row){place = row.toString();}else{place = edit.row.toString();}
+        var del = document.getElementById("dialog" + place).innerHTML.replace(/(\s+)?.$/, '');
+        document.getElementById("dialog" + place).innerHTML = del;
+    },
+}
+
+
+var trans = {
     scootDialog: function(){ // make room for new dialog
-        var prevNumber = 1;  // in this way top message disappears
-        var nextNumber = 2;
+        var prevNumber = 1; var nextNumber = 2; // in this way top message disappears
         while (nextNumber < NUM_ENTRIES) {
             var dialog = document.getElementById("dialog" + nextNumber.toString()).innerHTML;
             document.getElementById("dialog" + prevNumber.toString()).innerHTML = dialog;
@@ -66,14 +98,6 @@ var trans = {
         var lastEntry = NUM_ENTRIES - 1; // make room for next entry
         document.getElementById("dialog" + lastEntry.toString()).innerHTML = "";
         document.getElementById("timer"+ lastEntry.toString()).innerHTML = "";
-    },
-    typeOnStart: function(){
-        if(trans.editRow === NUM_ENTRIES){
-            trans.scootDialog();
-            trans.editRow--;
-        }  // checks to see if a scoot is needed upon typing
-        document.getElementById("timer"+ trans.editRow.toString()).style.visibility = "visible";
-        document.getElementById("timer"+ trans.editRow.toString()).innerHTML = "You";
     },
     selBreak: function(){  // respond to someone else's ice-breaker
         send.mode = 1; // signal to the sender that is it now time to chat
@@ -89,30 +113,6 @@ var trans = {
         send.to = user;               // keep track of who we are talking to
         var myRow = breaker.getRow(); // find row by socket personal socket.id
         trans.ition({perspec: "you", head: document.getElementById("dialog" + myRow).innerHTML});
-    },
-    type: function(data){
-        var thisRow = 0;
-        if(data.row){thisRow = data.row.toString();}
-        else{thisRow = trans.editRow.toString();}
-        var existing = document.getElementById("dialog" + thisRow).innerHTML;
-        if(existing){
-            document.getElementById("dialog" + thisRow).innerHTML = existing + data.text;
-        } else {
-            document.getElementById("dialog" + thisRow).innerHTML = data.text;
-        }
-    },
-    myTurn: function(){
-        send.mode = 1;            // allow user to type
-        document.getElementById("timer"+ trans.editRow.toString()).style.visibility = "visible";
-        document.getElementById("timer"+ trans.editRow.toString()).innerHTML = "other";
-        trans.increment();        // increment place to write to
-        timing.send(send.passOn); // time out input
-    },
-    rm: function(row){
-        var place = 0;
-        if(row){place = row.toString();}else{place = trans.editRow.toString();}
-        var del = document.getElementById("dialog" + place).innerHTML.replace(/(\s+)?.$/, '');
-        document.getElementById("dialog" + place).innerHTML = del;
     },
     ition: function(op){
         if(op.perspec){
@@ -145,8 +145,8 @@ var send = {
             if(send.empty){send.empty = false;}
             sock.et.emit("breaking", String.fromCharCode(event.charCode));
         }else if(send.mode === 1){
-            if(send.empty){trans.typeOnStart(); send.empty = false;}// account for nessisary transitions
-            trans.type({text: String.fromCharCode(event.charCode), row: 0});
+            if(send.empty){edit.onStart(); send.empty = false;}// account for nessisary transitions
+            edit.type({text: String.fromCharCode(event.charCode), row: 0});
             sock.et.emit("chat", {text: String.fromCharCode(event.charCode), id: send.to});
         }
     },
@@ -158,7 +158,7 @@ var send = {
             if(event.which == 13){send.passOn();}
             if(event.which == 8){
                 sock.et.emit('rmv', send.to);
-                trans.rm();
+                edit.rm();
             }
         }
     },
@@ -174,7 +174,7 @@ var send = {
                 send.mode = 0;    // reset into breaker mode
             } else {
                 sock.et.emit('toOther', send.to);
-                trans.increment(); // increment row number to edit
+                edit.increment(); // increase row number to edit
                 send.mode = 2;
             }
             timing.clear();
@@ -195,7 +195,7 @@ function iceInstance(row){
             this.inactive = false;
             this.usr = rtt.user;
         }
-        trans.type({text: rtt.text, row: this.row});
+        edit.type({text: rtt.text, row: this.row});
     };
     this.breakOn = function(user){
         document.getElementById("button"+ this.row.toString()).style.visibility = "visible";
@@ -239,7 +239,7 @@ var breaker = {
     rm: function(user){
        for(var i = 1; i < NUM_ENTRIES; i++){ // search to see if that user exist
             if (breaker.list[i].usr === user){ // match with a user we already have
-                trans.rm(i);
+                edit.rm(i);
                 return; // found a user currently talking to concat the letter to
             }
         }
@@ -267,9 +267,9 @@ var sock = {
         sock.et.on('post', breaker.post); // starts timer and stores user of breaker
         sock.et.on('rm', breaker.rm);
         sock.et.on('chatInit', trans.gotBreak);
-        sock.et.on('toMe', trans.type);
-        sock.et.on('yourTurn', trans.myTurn);
-        sock.et.on('rmv', trans.rm);
+        sock.et.on('toMe', edit.type);
+        sock.et.on('yourTurn', edit.myTurn);
+        sock.et.on('rmv', edit.rm);
         sock.et.on('endChat', function(){
             trans.ition({perspec: "", head:"People ready to chat"});
             send.mode = 0;
