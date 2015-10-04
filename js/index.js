@@ -73,6 +73,7 @@ var edit = { // Methods revolving around tracking possition of row
         send.mode = 1;            // allow user to type
         document.getElementById("timer"+ edit.row.toString()).style.visibility = "visible";
         document.getElementById("timer"+ edit.row.toString()).innerHTML = "other";
+        document.getElementById("textEntry").value = ""; // show user it is their turn to type
         edit.increment();        // increment place to write to
         timing.send(send.passOn); // time out input
     },
@@ -112,7 +113,8 @@ var trans = {
         send.mode = 2;                // signal user is listening to someones response
         send.to = user;               // keep track of who we are talking to
         var myRow = breaker.getRow(); // find row by socket personal socket.id
-        trans.ition({perspec: "you", head: document.getElementById("dialog" + myRow).innerHTML});
+        trans.ition({perspec: "you", head: document.getElementById("textEntry").value});
+        document.getElementById("textEntry").value = "";
     },
     ition: function(op){
         if(op.perspec){
@@ -169,8 +171,7 @@ var send = {
         } else if (send.mode === 1){
             if(send.empty){
                 sock.et.emit('endChat', send.to);
-                trans.ition({perspec: "", head:"People ready to chat"});
-                // trasition back to home screen
+                trans.ition({perspec: "", head:"People ready to chat"}); // trasition back to home screen
                 send.mode = 0;    // reset into breaker mode
             } else {
                 sock.et.emit('toOther', send.to);
@@ -179,10 +180,13 @@ var send = {
             }
             timing.clear();
         }
-        document.getElementById("textEntry").value = "";
-        send.empty = true;
+        send.empty = true; // it will be empty when it is responded to.
     },
-    block: function(){if(send.mode === 2){document.getElementById("textEntry").value = "";}}
+    block: function(){
+        if(send.mode === 2){
+            document.getElementById("textEntry").value = document.getElementById("textEntry").value.substring(0, document.getElementById("textEntry").value.length -1);
+        }
+    }
 }
 
 // recieving logic - non-robot
@@ -272,6 +276,7 @@ var sock = {
         sock.et.on('rmv', edit.rm);
         sock.et.on('endChat', function(){
             trans.ition({perspec: "", head:"People ready to chat"});
+            document.getElementById("textEntry").value = "";
             send.mode = 0;
         });
     }

@@ -26,37 +26,32 @@ var sock = {
         sock.io.on('connection', function(socket){
             console.log(socket.id.toString() + " connected");
             //sock.clients.push(socket); // store ids of conected clients
+
+            // ------ breaking ice ---------
             socket.on('breaking', function(txt){
-                sock.io.emit('breakRTT', {user: socket.id, text: txt});
-                //emit to one random user, we can start with everyone though
-            });
-            socket.on('chat', function(rtt){
-                sock.io.to(rtt.id).emit('toMe', {text: rtt.text, row: 0});
-            });
-            socket.on('toOther', function(id){
-                sock.io.to(id).emit('yourTurn');
-            });
-            socket.on('rmv', function(id){
-                sock.io.to(id).emit('rmv');
+                socket.broadcast.emit('breakRTT', {user: socket.id, text: txt});
+                //emit to one random user, we can start with everyone besides  though
             });
             socket.on("post", function(){
-                sock.io.emit('post', socket.id); // emit the conclusion of an ice breaker composition
+                socket.broadcast.emit('post', socket.id);
+                // emit the conclusion of an ice breaker composition
             });
-            socket.on('bck', function(){
-                sock.io.emit('rm', socket.id);
-            });
+            socket.on('bck', function(){socket.broadcast.emit('rm', socket.id);});
+            // ------ one on one chat ----
             socket.on('selBreak', function(id){
                 if(sock.io.sockets.connected[id]){
                     console.log(socket.id.toString() + " and " + id.toString() + " chating");
                     sock.io.to(id).emit('chatInit', socket.id);
                 }
             });
+            socket.on('chat', function(rtt){sock.io.to(rtt.id).emit('toMe', {text: rtt.text, row: 0});});
+            socket.on('rmv', function(id){sock.io.to(id).emit('rmv');});
+            socket.on('toOther', function(id){sock.io.to(id).emit('yourTurn');});
+            socket.on('endChat', function(id){sock.io.to(id).emit('endChat');});
+            // ----- disconnect event -------
             socket.on('disconnect', function(){
                console.log(socket.id.toString() + " disconnected");
             });
-            socket.on('endChat', function(id){
-                sock.io.to(id).emit('endChat');
-            })
         });
     }
 }
