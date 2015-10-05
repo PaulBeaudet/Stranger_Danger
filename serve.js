@@ -5,28 +5,20 @@ var http = require('http').Server(app);
   res.sendFile(__dirname + '/index.html');
 });*/
 
-var match = {
-    es: {},      // currently matched pairs
-    ice: {}, // list of breakers and corisponding users
-    these: function(firstUser, secondUser){
-        match.es[firstUser] = secondUser; // set responder as property and breaker as value; responder goes first
+var breaks = {
+    clients: [], // list of clients that can be broken to
+    add: function(user){breaks.clients.push(user);},
+    rm: function(user){var index = breaks.clients.indexOf(user); breaks.clients.splice(index, 1);},
+    on: function(user, callback){
+        
     },
-    breaker: function(user, breaker){
-        match.ice[breaker] = user; // set breaker to user
-    },
-    get: function(breaker){
-        return match.ice[breaker]; // returns the user assosiated with this breaker
-    }
 }
 
 var sock = {
-    //clients: [],
     io: require('socket.io')(http),
     init: function (){
         sock.io.on('connection', function(socket){
             console.log(socket.id.toString() + " connected");
-            //sock.clients.push(socket); // store ids of conected clients
-
             // ------ breaking ice ---------
             socket.on('breaking', function(txt){
                 socket.broadcast.emit('breakRTT', {user: socket.id, text: txt});
@@ -50,7 +42,9 @@ var sock = {
             socket.on('endChat', function(id){sock.io.to(id).emit('endChat');});
             // ----- disconnect event -------
             socket.on('disconnect', function(){
-               console.log(socket.id.toString() + " disconnected");
+                match.rm(socket.id); // remove match from current client list
+                // need a case for a disconect durring chat to remove match
+                console.log(socket.id.toString() + " disconnected");
             });
         });
     }
