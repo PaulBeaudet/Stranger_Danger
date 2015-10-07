@@ -63,11 +63,8 @@ var edit = { // Methods revolving around tracking possition of row
     },
     type: function(data){
         var thisRow = 0;
-        if(data.row){thisRow = data.row.toString();}
-        else{thisRow = edit.row.toString();}
-        var existing = document.getElementById("dialog" + thisRow).innerHTML;
-        if(existing){document.getElementById("dialog" + thisRow).innerHTML = existing + data.text;}
-        else{document.getElementById("dialog" + thisRow).innerHTML = data.text;}
+        if(data.row){thisRow = data.row.toString();} else{thisRow = edit.row.toString();}
+        document.getElementById('dialog' + thisRow.toString()).innerHTML = data.text;
     },
     myTurn: function(){
         send.mode = 1;            // allow user to type
@@ -143,16 +140,6 @@ var send = {
     empty: true,
     mode: 0,
     to: '', // potential user id
-    realTime: function(event){  // called for every change in input
-        if(send.mode === 0){
-            if(send.empty){send.empty = false;}
-            sock.et.emit("breaking", String.fromCharCode(event.charCode));
-        }else if(send.mode === 1){
-            if(send.empty){edit.onStart(); send.empty = false;}// account for nessisary transitions
-            edit.type({text: String.fromCharCode(event.charCode), row: 0});
-            sock.et.emit("chat", {text: String.fromCharCode(event.charCode), id: send.to});
-        }
-    },
     nonPrint: function(event){
         if(send.mode === 0){
             if(event.which == 13){send.passOn();}
@@ -183,9 +170,18 @@ var send = {
         }
         send.empty = true; // it will be empty when it is responded to.
     },
-    block: function(){
-        if(send.mode === 2){
-            document.getElementById("textEntry").value = document.getElementById("textEntry").value.substring(0, document.getElementById("textEntry").value.length -1);
+    input: function(){
+        var txt = document.getElementById("textEntry");
+        if(send.mode === 0){
+            if(send.empty){send.empty = false;}
+            sock.et.emit("breaking", txt.value);
+        }else if(send.mode === 1){
+            if(send.empty){edit.onStart(); send.empty = false;}// account for nessisary transitions
+            edit.type({text: txt.value, row: 0});
+            sock.et.emit("chat", {text: txt.value, id: send.to});
+        }
+        else if(send.mode === 2){
+            txt.value = txt.value.substring(0, txt.value.length -1);
         }
     }
 }
@@ -233,7 +229,7 @@ var breaker = {
             }
         } // loop only exits when there was no inactive row, in which case there is no room for this user
     },
-    post: function(user){
+    post: function(user){ // makes a breaker appear on the page
         for(var i = 1; i < NUM_ENTRIES; i++){ // search to see if that user exist
             if (breaker.list[i].usr === user){ // match with a user we already have
                 breaker.list[i].breakOn(); // start breaking ice
@@ -241,10 +237,10 @@ var breaker = {
             }
         }
     },
-    rm: function(user){
+    rm: function(user){ // removes a letter while typing
        for(var i = 1; i < NUM_ENTRIES; i++){ // search to see if that user exist
             if (breaker.list[i].usr === user){ // match with a user we already have
-                edit.rm(i);
+                edit.rm(i); // remove letter at i row
                 return; // found a user currently talking to concat the letter to
             }
         }
@@ -291,9 +287,8 @@ var app = {
         document.getElementById("app").onload = function () {
             app.updateDir();     // indicate currant directory
             trans.ition({perspec: "", head:"People ready to chat"});
-            document.getElementById("textEntry").onkeypress = send.realTime; // set the text bar to send data
             document.getElementById("textEntry").onkeydown = send.nonPrint;  // deal with non-printable input
-            document.getElementById("textEntry").oninput = send.block;      // block when not user's turn
+            document.getElementById("textEntry").oninput = send.input;      // block when not user's turn
             document.getElementById("sendButton").onclick = send.passOn;
             document.getElementById("upsellButton").onclick = function(){window.location = 'upsell.html'};
             app.buttonActions(trans.selBreak);     // set button actions

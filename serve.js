@@ -10,7 +10,7 @@ var breaks = {
     add: function(user){breaks.clients.push(user);},
     rm: function(user){var index = breaks.clients.indexOf(user); breaks.clients.splice(index, 1);},
     on: function(user, callback){
-        
+
     },
 }
 
@@ -42,7 +42,6 @@ var sock = {
             socket.on('endChat', function(id){sock.io.to(id).emit('endChat');});
             // ----- disconnect event -------
             socket.on('disconnect', function(){
-                match.rm(socket.id); // remove match from current client list
                 // need a case for a disconect durring chat to remove match
                 console.log(socket.id.toString() + " disconnected");
             });
