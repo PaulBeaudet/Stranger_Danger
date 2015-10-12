@@ -256,13 +256,8 @@ var breaker = {
 // -- socket handler
 
 var sock = {
-    et: false, // by default represents non-existant socket connection
-    connect: function(){
-        try{sock.et = io.connect(SERVER);}
-        catch(err){alert("sorry cannot connect");}
-        sock.et.on('connect', sock.handle);
-    },
-    handle: function (){
+    et: io(), // connect to server the page was served from
+    init: function (){
         sock.et.on('breakRTT', breaker.rtt); // print breaker to the correct row; needs object that holds user and letter
         // recieves real time text for breakers
         sock.et.on('post', breaker.post); // starts timer and stores user of breaker
@@ -291,9 +286,9 @@ var app = {
             document.getElementById("textEntry").oninput = send.input;      // block when not user's turn
             document.getElementById("sendButton").onclick = send.passOn;
             document.getElementById("upsellButton").onclick = function(){window.location = 'upsell.html'};
-            app.buttonActions(trans.selBreak);     // set button actions
-            sock.connect();                       // connect socket to server
-            breaker.init();                       // create breaker objects to manipulate
+            app.buttonActions(trans.selBreak); // set button actions
+            sock.init();                       // connect socket to server
+            breaker.init();                    // create breaker objects to manipulate
         }
     },
     updateDir: function () {

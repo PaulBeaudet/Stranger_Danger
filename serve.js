@@ -1,9 +1,15 @@
-var app = require('express')();
+// serve.js ~ Copyright 2015 Paul Beaudet
+// This serves a test application that lets people talk to strangers
+var express = require('express');
+var compress = require('compression');
+var app = express();
 var http = require('http').Server(app);
 
-/*app.get('/', function(req, res){
-  res.sendFile(__dirname + '/index.html');
-});*/
+app.use(compress());   // gziping middleware
+app.use(express.static(__dirname + '/views'));
+
+// result of calling root of site
+app.get('/', function(req, res){res.sendFile(__dirname + '/index.html');});
 
 var breaks = {
     clients: [], // list of clients that can be broken to
@@ -24,10 +30,9 @@ var sock = {
                 socket.broadcast.emit('breakRTT', {user: socket.id, text: txt});
                 //emit to one random user, we can start with everyone besides  though
             });
-            socket.on("post", function(){
-                socket.broadcast.emit('post', socket.id);
-                // emit the conclusion of an ice breaker composition
-            });
+            // emit the conclusion of an ice breaker composition
+            socket.on("post", function(){socket.broadcast.emit('post', socket.id);});
+            // send the bck button // is this still relivant?
             socket.on('bck', function(){socket.broadcast.emit('rm', socket.id);});
             // ------ one on one chat ----
             socket.on('selBreak', function(id){
@@ -51,6 +56,4 @@ var sock = {
 
 sock.init();
 
-http.listen(3000, function(){
-    console.log('listening on *:3000');
-});
+http.listen(3000, function(){console.log('listening on *:3000');});
