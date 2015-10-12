@@ -276,11 +276,9 @@ var sock = {
 // -- app object
 
 var app = {
-    directory: "home", // default starting directory or top level topic
     // one call to methods used to start the application
     init: function () {
         document.getElementById("app").onload = function () {
-            app.updateDir();     // indicate currant directory
             trans.ition({perspec: "", head:"People ready to chat"});
             document.getElementById("textEntry").onkeydown = send.nonPrint;  // deal with non-printable input
             document.getElementById("textEntry").oninput = send.input;      // block when not user's turn
@@ -289,12 +287,6 @@ var app = {
             app.buttonActions(trans.selBreak); // set button actions
             sock.init();                       // connect socket to server
             breaker.init();                    // create breaker objects to manipulate
-        }
-    },
-    updateDir: function () {
-        var dir = document.getElementsByClassName("dir");
-        for (var i = 0; dir[i]; i++){ // if the element exist asign its value
-            dir[i].innerHTML = this.directory;
         }
     },
     buttonActions: function(action) { // actions for selection of breaker
