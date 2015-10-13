@@ -13,45 +13,13 @@ var SEND_TIMER = NUM_ENTRIES;
 var BREAK = 0;
 var CHAT = 1;
 var BLOCK = 2;
+// info messages
+var INFO_HOME = "Pick a topic, create topic or get matched";
+var INFO_CHAT = "Chat: Pressing done while text empty, finishes chat";
+var INFO_TIMEOUT = "Actions timed, auto-complete on timeout";
+var INFO_REJECTION = "This word will reject you from the conversation";
+var INFO_FILTER = "Words can be auto rejected by preferance with a filter";
 
-// timer logic
-var time = { // dep: document
-    rs: [],      // list of timer elements on page, build with init
-    counter: [], // one exist per row, last is send timer
-    inProg: [],  // IDs of timers in case clear is needed
-    countDown: function(pos, ondone){
-        if (time.counter[pos]) {
-            time.counter[pos]--;
-            time.rs[pos].innerHTML = "T-" + time.counter[pos];
-            time.inProg[pos] = setTimeout(function(){time.countDown(pos, ondone);}, 1000);
-        } else {
-            time.rs[pos].innerHTML = "";
-            time.counter[pos] = WAIT_TIME;
-            if(ondone){ondone();}
-        }
-    },
-    clear: function(){
-        for (var i = 0; i < NUM_TIMERS; i++){
-            if(time.inProg[i]){clearTimeout(time.inProg[i]);} // deactivate active timeouts
-            time.rs[i].innerHTML = "";               // empty timer text
-            time.counter[i] = WAIT_TIME;                      // reset timeouts
-        }
-    },
-    stopSend: function(){
-        if(time.inProg[SEND_TIMER]){
-            clearTimeout(time.inProg[SEND_TIMER]);
-            time.rs[SEND_TIMER].innerHTML = "";
-            time.counter[SEND_TIMER] = WAIT_TIME;
-        }
-    },
-    init: function(){
-        for(var i = 0; i < NUM_TIMERS; i++){time.rs.push(document.getElementById('timer' + i));}
-    },
-    from: function(whichRow, who){ // replaces time span elemement with perspective of user
-        time.rs[whichRow].style.visibility = "visible";
-        time.rs[whichRow].innerHTML = who;
-    },
-}
 
 // Methods revolving around tracking possition of row
 var edit = { // dep: rows, time, textBar, edit
@@ -107,16 +75,18 @@ var trans = { // dep: send, time, rows, textBar
         send.to = user;               // keep track of who we are talking to
         trans.ition({perspec: "you", head: document.getElementById("textEntry").value});
     },
-    ition: function(op){
+    ition: function(opener){
         time.clear();
         rows.reset();
-        if(op){
-            time.from(0, op.perspec);              // write perspective to first row
-            rows.dialog[0].innerHTML = op.head;    // write topic to top of page
+        if(opener){
+            time.from(0, opener.perspec);              // write perspective to first row
+            rows.dialog[0].innerHTML = opener.head;    // write topic to top of page
             textBar.btnTxt.innerHTML = BTN_SENDING;// set the instruction on the send button
+            info.chat();
             edit.row = 1;
-        } else {
+        } else { // transition back to home view
             textBar.btnTxt.innerHTML = BTN_STARTING;
+            info.home();
             edit.row = 0;
         }
         textBar.entry.value = "";
@@ -209,8 +179,63 @@ var sock = {  // dep: sockets.io, topic, trans, edit, send
     }
 }
 
+// informational header, this can change from screen to screen to indicate use information
+var info = {
+    mation: document.getElementById('info'),
+    inProg: null,
+    chat: function(){
+        info.mation.innerHTML = INFO_CHAT;
+        info.inProg = setTimeout(function(){
+            info.mation.innerHTML = INFO_TIMEOUT;
+        }, (WAIT_TIME / 2 * 1000));
+    },
+    home: function(){
+        if(info.inProg){clearTimeout(info.inProg);}
+        info.mation.innerHTML = INFO_HOME;
+    }
+}
+
+// timer logic
+var time = { // dep: document
+    rs: [],      // list of timer elements on page, build with init
+    counter: [], // one exist per row, last is send timer
+    inProg: [],  // IDs of timers in case clear is needed
+    countDown: function(pos, ondone){
+        if (time.counter[pos]) {
+            time.counter[pos]--;
+            time.rs[pos].innerHTML = "T-" + time.counter[pos];
+            time.inProg[pos] = setTimeout(function(){time.countDown(pos, ondone);}, 1000);
+        } else {
+            time.rs[pos].innerHTML = "";
+            time.counter[pos] = WAIT_TIME;
+            if(ondone){ondone();}
+        }
+    },
+    clear: function(){
+        for (var i = 0; i < NUM_TIMERS; i++){
+            if(time.inProg[i]){clearTimeout(time.inProg[i]);} // deactivate active timeouts
+            time.rs[i].innerHTML = "";               // empty timer text
+            time.counter[i] = WAIT_TIME;                      // reset timeouts
+        }
+    },
+    stopSend: function(){
+        if(time.inProg[SEND_TIMER]){
+            clearTimeout(time.inProg[SEND_TIMER]);
+            time.rs[SEND_TIMER].innerHTML = "";
+            time.counter[SEND_TIMER] = WAIT_TIME;
+        }
+    },
+    init: function(){
+        for(var i = 0; i < NUM_TIMERS; i++){time.rs.push(document.getElementById('timer' + i));}
+    },
+    from: function(whichRow, who){ // replaces time span elemement with perspective of user
+        time.rs[whichRow].style.visibility = "visible";
+        time.rs[whichRow].innerHTML = who;
+    },
+}
+
 // Bottom of page text bar footer object
-var textBar = { // dep: send
+var textBar = { // dep: document, send
     entry: document.getElementById('textEntry'),
     button: document.getElementById('sendButton'),
     btnTxt: document.getElementById('sendText'),
@@ -238,15 +263,11 @@ var rows = { // dep: document, trans
             else{rows.dialog[i].innerHTML = WAIT_MSG;}
             rows.button[i].style.visibility = "hidden";
         }
-    },
-    clear: function(whichRow){
-        rows.dialog[whichRow].innerHTML = "";
-        time.rs[whichRow].innerHTML = "";
     }
 }
 
-// -- app object
-var app = {
+// sets up application on page load
+var app = { // dep: rows, time, trans, textBar, sock, document
     // one call to methods used to start the application
     init: function () {
         document.getElementById("app").onload = function () {
