@@ -11,13 +11,10 @@ app.use(express.static(__dirname + '/views'));
 // result of calling root of site
 app.get('/', function(req, res){res.sendFile(__dirname + '/index.html');});
 
-var breaks = {
+var unmatched = {
     clients: [], // list of clients that can be broken to
-    add: function(user){breaks.clients.push(user);},
-    rm: function(user){var index = breaks.clients.indexOf(user); breaks.clients.splice(index, 1);},
-    on: function(user, callback){
-
-    },
+    add: function(user){unmatched.clients.push(user);},
+    rm: function(user){var index = unmatched.clients.indexOf(user); unmatched.clients.splice(index, 1);}
 }
 
 var sock = {
@@ -32,8 +29,6 @@ var sock = {
             });
             // emit the conclusion of an ice breaker composition
             socket.on("post", function(){socket.broadcast.emit('post', socket.id);});
-            // send the bck button // is this still relivant?
-            socket.on('bck', function(){socket.broadcast.emit('rm', socket.id);});
             // ------ one on one chat ----
             socket.on('selBreak', function(id){
                 if(sock.io.sockets.connected[id]){
@@ -42,7 +37,6 @@ var sock = {
                 }
             });
             socket.on('chat', function(rtt){sock.io.to(rtt.id).emit('toMe', {text: rtt.text, row: 0});});
-            socket.on('rmv', function(id){sock.io.to(id).emit('rmv');});
             socket.on('toOther', function(id){sock.io.to(id).emit('yourTurn');});
             socket.on('endChat', function(id){sock.io.to(id).emit('endChat');});
             // ----- disconnect event -------
