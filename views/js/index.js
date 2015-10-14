@@ -159,6 +159,26 @@ var topic = { // dep: rows, sock, time, edit
                 return;
             }
         }
+    },
+    ttl: function(ttl){
+        var row = 0;
+        for(row; topic.user[row]; row++){ // check if this is coming from one of the existing listings
+            if(topic.user[row] == ttl.user){
+                edit.type({text: ttl.text, row: row}); // update changing real time text
+                return;                                // if user was found this is end of what we need to do
+            }
+        } // in the case of getting this topic for the first time
+        if( row < NUM_ENTRIES ){ // make sure there is still room on the page
+            topic.user.push(ttl.user);                     // add this user to our list
+            rows.button[row].style.visibility = "visible"; // make the button visible to the user
+                time.counter[row] = ttl.ttl;     // give counter at our row the right time to live
+                time.countDown(row, function (){ // this is the action to occur on count end
+                    rows.button[row].style.visibility = "hidden"; // on end hide button
+                    rows.dialog[row].innerHTML = "";              // on end remove dialog
+                    topic.user.splice(row, 1);                    // on end remove this user
+                });
+            edit.type({text: ttl.text, row: row});                // display first text
+        } else { console.log("server sent me too many topics"); }
     }
 }
 
@@ -169,6 +189,7 @@ var sock = {  // dep: sockets.io, topic, trans, edit, send
         sock.et.on('breakRTT', topic.rtt); // print topic to the correct row; needs object that holds user and letter
         // recieves real time text for topics
         sock.et.on('post', topic.post); // starts timer and stores user of topic
+        sock.et.on('topic', topic.ttl); // grab time to live topics: timed from the getgo
         sock.et.on('chatInit', trans.gotBreak);
         sock.et.on('toMe', edit.type);
         sock.et.on('yourTurn', edit.myTurn);
