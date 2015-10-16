@@ -51,6 +51,7 @@ var match = {
         }
     },
     findTopic: function(user, checkUser){ // iteratively search clients to find one topic with an acceptable TTL
+        if (match.clients.length <= checkUser) {checkUser = match.clients.length - 1;} // mass disconnect condition
         var thisTry = match.clients[checkUser];
         // if good ttl and yet to be taken and not ourself : success condition for a match
         if(thisTry.ttl > MINIMUM_TTL && thisTry.hasMyTopic.indexOf(user) === -1 && thisTry.user != user){
