@@ -58,7 +58,6 @@ var edit = { // dep: rows, time, textBar, edit
     }
 }
 
-
 // transition handling of visual elements
 var trans = { // dep: send, time, rows, textBar
     selBreak: function(){  // respond to someone else's topic
@@ -73,6 +72,7 @@ var trans = { // dep: send, time, rows, textBar
     gotBreak: function(user){         // someone responded to users personal
         send.mode = BLOCK;            // signal user is listening to someones response
         send.to = user;               // keep track of who we are talking to
+        time.stopSend("");            // stop time to live timer
         trans.ition({perspec: "you", head: document.getElementById("textEntry").value});
     },
     ition: function(opener){
@@ -98,13 +98,12 @@ var send = { // dep: sock, trans, edit, textBar
     empty: true,
     mode: 0,
     to: '', // potential user id
-    nonPrint: function(event){
+    nonPrint: function(event){ // account for pressing the enter key
         if(send.mode === BREAK || send.mode === CHAT){if(event.which == 13){send.passOn();}}
     },
     passOn: function(){
         if(send.mode === BREAK){
-            sock.et.emit('post');
-            send.mode = BLOCK;
+            send.startTTL(); // start ttl timer, shows time topics have to live in send timer
         } else if (send.mode === CHAT){
             if(send.empty){
                 sock.et.emit('endChat', send.to);
@@ -114,14 +113,18 @@ var send = { // dep: sock, trans, edit, textBar
                 sock.et.emit('toOther', send.to);
                 edit.increment();  // increase row number to edit
                 send.mode = BLOCK; // block user till other responds
-                time.stopSend();   // stop the clock from running anymore
+                time.stopSend("");   // stop the clock from running anymore
             }
         }
         send.empty = true; // it will be empty when it is responded to.
     },
     input: function(){
         if(send.mode === BREAK){
-            if(send.empty){send.empty = false;}
+            if(send.empty){
+                send.empty = false;
+                time.counter[SEND_TIMER] = WAIT_TIME - 1;  // note: Make sure post sent before timeout on other client
+                time.countDown(SEND_TIMER, send.startTTL); // this is where breakers will start being timed
+            }
             sock.et.emit("breaking", textBar.entry.value);
         }else if(send.mode === CHAT){
             if(send.empty){edit.onStart(); send.empty = false;}// account for nessisary transitions
@@ -131,31 +134,29 @@ var send = { // dep: sock, trans, edit, textBar
         else if(send.mode === BLOCK){ // block more input from happening, leaving last sent message in box
             textBar.entry.value = textBar.entry.value.substring(0, textBar.entry.value.length -1);
         }
+    },
+    startTTL: function(){ // called when topic composition is complete
+        sock.et.emit('post');         // Signal to the server that composition of topic is done
+        time.stopSend(WAIT_TIME);     // in case this was called by passOn
+        send.mode = BLOCK;            // block input till time to live is over
+        time.countDown(SEND_TIMER, function(){
+            time.stopSend("");        // reset timer
+            textBar.entry.value = ""; // empty text
+            send.empty = true;        // text is now empty
+            send.mode = BREAK;
+        });
     }
 }
 
 // logic for recieving topics
 var topic = { // dep: rows, sock, time, edit
     user: [],
-    rtt: function(rtt){
-        for (var i = 0; topic.user[i]; i++){
-            if(topic.user[i] == rtt.user){
-                edit.type({text: rtt.text, row: i});
-                return;
-            }
-        } // given this user has yet to start a topic with us let them
-        topic.user.push(rtt.user);
-    },
-    post: function(user){
-        for(var i = 0; topic.user[i]; i++){
-            if(topic.user[i] == user){
-                rows.button[i].style.visibility = "visible";
-                time.countDown(i, function(){
-                    send.mode = BREAK;
-                    rows.button[i].style.visibility = "hidden";
-                    rows.dialog[i].innerHTML = "";
-                    topic.user[i] = ""; // !! not going to work !!
-                });
+    post: function(ttl){ // re-adjust ttl (time to live) on post
+        for(var row = 0; topic.user[row]; row++){
+            if(topic.user[row] == ttl.user){
+                time.counter[row] = ttl.ttl;
+                clearTimeout(time.inProg[row]);                      // give counter at our row the right time to live
+                time.countDown(row, function(){topic.done(row)}); // Set timer on this row
                 return;
             }
         }
@@ -169,16 +170,17 @@ var topic = { // dep: rows, sock, time, edit
             }
         } // in the case of getting this topic for the first time
         if( row < NUM_ENTRIES ){ // make sure there is still room on the page
-            topic.user.push(ttl.user);                     // add this user to our list
-            rows.button[row].style.visibility = "visible"; // make the button visible to the user
-                time.counter[row] = ttl.ttl;     // give counter at our row the right time to live
-                time.countDown(row, function (){ // this is the action to occur on count end
-                    rows.button[row].style.visibility = "hidden"; // on end hide button
-                    rows.dialog[row].innerHTML = "";              // on end remove dialog
-                    topic.user.splice(row, 1);                    // on end remove this user
-                });
-            edit.type({text: ttl.text, row: row});                // display first text
+            topic.user.push(ttl.user);                        // add this user to our list
+            rows.button[row].style.visibility = "visible";    // make the button visible to the user
+            time.counter[row] = ttl.ttl;                      // give counter at our row the right time to live
+            time.countDown(row, function(){topic.done(row)}); // Set timer on this row
+            edit.type({text: ttl.text, row: row});            // display first text
         } else { console.log("server sent me too many topics"); }
+    },
+    done: function(row) {           // this is the action to occur on count end
+        rows.button[row].style.visibility = "hidden"; // on end hide button
+        rows.dialog[row].innerHTML = "";              // on end remove dialog
+        topic.user.splice(row, 1);                    // on end remove this user
     }
 }
 
@@ -186,8 +188,6 @@ var topic = { // dep: rows, sock, time, edit
 var sock = {  // dep: sockets.io, topic, trans, edit, send
     et: io(), // connect to server the page was served from
     init: function (){
-        sock.et.on('breakRTT', topic.rtt); // print topic to the correct row; needs object that holds user and letter
-        // recieves real time text for topics
         sock.et.on('post', topic.post); // starts timer and stores user of topic
         sock.et.on('topic', topic.ttl); // grab time to live topics: timed from the getgo
         sock.et.on('chatInit', trans.gotBreak);
@@ -195,7 +195,7 @@ var sock = {  // dep: sockets.io, topic, trans, edit, send
         sock.et.on('yourTurn', edit.myTurn);
         sock.et.on('endChat', function(){
             trans.ition(); // switch back to default appearence
-            send.mode = 0;
+            send.mode = BREAK;
         });
     }
 }
@@ -235,16 +235,14 @@ var time = { // dep: document
     clear: function(){
         for (var i = 0; i < NUM_TIMERS; i++){
             if(time.inProg[i]){clearTimeout(time.inProg[i]);} // deactivate active timeouts
-            time.rs[i].innerHTML = "";               // empty timer text
+            time.rs[i].innerHTML = "";                        // empty timer text
             time.counter[i] = WAIT_TIME;                      // reset timeouts
         }
     },
-    stopSend: function(){
-        if(time.inProg[SEND_TIMER]){
-            clearTimeout(time.inProg[SEND_TIMER]);
-            time.rs[SEND_TIMER].innerHTML = "";
-            time.counter[SEND_TIMER] = WAIT_TIME;
-        }
+    stopSend: function(text){
+        clearTimeout(time.inProg[SEND_TIMER]);
+        time.rs[SEND_TIMER].innerHTML = text;
+        time.counter[SEND_TIMER] = WAIT_TIME;
     },
     init: function(){
         for(var i = 0; i < NUM_TIMERS; i++){time.rs.push(document.getElementById('timer' + i));}
@@ -272,7 +270,7 @@ var rows = { // dep: document, trans
     button: [],
     dialog: [],
     init: function() { // actions for selection of topic
-        for(var i = 0; i < NUM_ENTRIES; i++){                     // for every entry and
+        for(var i = 0; i < NUM_ENTRIES; i++){                        // for every entry and
             rows.dialog.push(document.getElementById("dialog" + i));
             rows.button.push(document.getElementById("button" + i)); // store a button element
             rows.button[i].onclick = trans.selBreak;                 // give the button its action

@@ -60,7 +60,9 @@ var sock = {
                 //emit to one random user, we can start with everyone besides  though
             });
             // emit the conclusion of an ice breaker composition
-            // socket.on("post", function(){socket.broadcast.emit('post', socket.id);});
+            socket.on("post", function(){
+                socket.broadcast.emit('post', {user: socket.id, ttl: WAIT_TIME});
+            });
             // ------ one on one chat ----
             socket.on('selBreak', function(id){
                 if(sock.io.sockets.connected[id]){
