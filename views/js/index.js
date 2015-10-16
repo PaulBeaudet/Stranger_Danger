@@ -88,6 +88,7 @@ var trans = { // dep: send, time, rows, textBar
             textBar.btnTxt.innerHTML = BTN_STARTING;
             info.home();
             edit.row = 0;
+            topic.user = []; // clear users from topic list
         }
         textBar.entry.value = "";
     }
@@ -154,8 +155,8 @@ var topic = { // dep: rows, sock, time, edit
     post: function(ttl){ // re-adjust ttl (time to live) on post
         for(var row = 0; topic.user[row]; row++){
             if(topic.user[row] == ttl.user){
+                clearTimeout(time.inProg[row]);                   // give counter at our row the right time to live
                 time.counter[row] = ttl.ttl;
-                clearTimeout(time.inProg[row]);                      // give counter at our row the right time to live
                 time.countDown(row, function(){topic.done(row)}); // Set timer on this row
                 return;
             }
