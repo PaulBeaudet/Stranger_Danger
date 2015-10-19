@@ -44,7 +44,7 @@ var match = {
         var index = match.clients.map(function(x){return x.user;}).indexOf(user); // get user's index number
         if (index > -1){ // make sure this user still here
             var checkUser = match.clients.length - 1; // The client that is asking is at least here so this is ok
-            setTimeout(function(){match.findTopic(user, checkUser);}, 0);
+            process.nextTick(function(){match.findTopic(user, checkUser);});
             match.clients[index].inProgress = setTimeout(function(){match.getTopics(user);}, READ_TIME);
             // in this way we will try to hand a topic to every individual user every READ_TIME ms
             // as user needs time to read topic just pushed
@@ -60,7 +60,7 @@ var match = {
         } else {
             checkUser--; // decrement user to check
             if(checkUser > -1){
-                setTimeout(function(){match.findTopic(user, checkUser);}, 0);
+                process.nextTick(function(){match.findTopic(user, checkUser);});
             }// basically didn't find what was being looked for and still have more options so recurse further
         }
     },
