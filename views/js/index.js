@@ -45,11 +45,11 @@ var edit = { // dep: rows, time, textBar, edit
 
 // transition handling of visual elements
 var trans = { // dep: send, time, rows, textBar
-    selBreak: function(){  // respond to someone else's topic
+    selectTopic: function(){  // respond to someone else's topic
         var row = this.id[this.id.length-1];
         var user = topic.user[parseInt(row)];
         send.to = user;
-        sock.et.emit("selBreak", user); // signal which user that needs to be connected with
+        sock.et.emit("selectTopic", user); // signal which user that needs to be connected with
         send.mode = CHAT; // signal to the sender that is it now time to chat
         trans.ition({perspec: "other", head: rows.dialog[row].innerHTML});
         time.countDown(SEND_TIMER, send.passOn); // set stopwatch for sending a message
@@ -69,7 +69,7 @@ var trans = { // dep: send, time, rows, textBar
             info.chat();       // set hint text for chat mode
             edit.row = 1;      // new dialog starts at possition 1
         } else {               // transition back to topic making and picking mode
-            send.mode = BREAK; // reset into topic mode
+            send.mode = TOPIC; // reset into topic mode
             info.home();       // Set hint text for topic picking mode
             edit.row = 0;      // topic can now posted to possition 0
             topic.user = [];   // clear users from old topic list if exist
@@ -79,9 +79,9 @@ var trans = { // dep: send, time, rows, textBar
 }
 
 // Typing modes
-var BREAK = 0;
-var CHAT = 1;
-var BLOCK = 2;
+var TOPIC = 0; // users post or select topics
+var CHAT  = 1; // two users chat one on one
+var BLOCK = 2; // blocks user entry, waiting for either their topic to expire or chatting partner to finish
 
 // sending logic
 var send = { // dep: sock, trans, edit, textBar
@@ -89,10 +89,10 @@ var send = { // dep: sock, trans, edit, textBar
     mode: 0,
     to: '', // potential user id
     nonPrint: function(event){ // account for pressing the enter key
-        if(send.mode === BREAK || send.mode === CHAT){if(event.which == 13){send.passOn();}}
+        if(send.mode === TOPIC || send.mode === CHAT){if(event.which == 13){send.passOn();}}
     },
     passOn: function(){
-        if(send.mode === BREAK){
+        if(send.mode === TOPIC){
             send.startTTL(); // start ttl timer, shows time topics have to live in send timer
         } else if (send.mode === CHAT){
             if(send.empty){
@@ -109,13 +109,13 @@ var send = { // dep: sock, trans, edit, textBar
         send.empty = true; // it will be empty when it is responded to.
     },
     input: function(){
-        if(send.mode === BREAK){
+        if(send.mode === TOPIC){
             if(send.empty){
                 send.empty = false;
                 time.counter[SEND_TIMER] = WAIT_TIME - 1;  // note: Make sure post sent before timeout on other client
                 time.countDown(SEND_TIMER, send.startTTL); // this is where breakers will start being timed
             }
-            sock.et.emit("breaking", textBar.entry.value);
+            sock.et.emit("create", textBar.entry.value);   // create topic ( real time to server )
         }else if(send.mode === CHAT){
             if(send.empty){edit.onStart(); send.empty = false;} // account for nessisary transitions
             edit.type({text: textBar.entry.value, row: 0});     // print on own screen
@@ -133,14 +133,14 @@ var send = { // dep: sock, trans, edit, textBar
         time.countDown(SEND_TIMER, function(){
             time.stopSend("");        // reset timer
             send.empty = true;        // text is now empty
-            send.mode = BREAK;        // set so topics can be made again
-            textBar.changeAction(BREAK); // display notice that topics can be made again
+            send.mode = TOPIC;        // set so topics can be made again
+            textBar.changeAction(TOPIC); // display notice that topics can be made again
         });
     }
 }
 
 // logic for recieving topics
-var topic = { // dep: rows, sock, time, edit
+var topic = { // dep: rows, time, edit
     user: [],
     post: function(ttl){ // re-adjust ttl (time to live) on post
         for(var row = 0; topic.user[row]; row++){
@@ -179,35 +179,30 @@ var topic = { // dep: rows, sock, time, edit
 var sock = {  // dep: sockets.io, topic, trans, edit, send
     et: io(), // connect to server the page was served from
     init: function (){
+        // Topic starting components
         sock.et.on('post', topic.post);         // starts timer and stores user of topic
         sock.et.on('topic', topic.ttl);         // grab time to live topics: timed from the getgo
         sock.et.on('chatInit', trans.gotBreak); // someone wants to chat with us
+        // real time chat reception components
         sock.et.on('toMe', edit.type);          // recieve Real Time Text
         sock.et.on('yourTurn', edit.myTurn);    // signals when it is this clients turn to type
         sock.et.on('endChat', trans.ition);     // switch back to default appearence
     }
 }
 
-// info messages
-var INFO_HOME = "Pick a topic or create topic";
-var INFO_CHAT = "Chat: Pressing done while text box empty, ends chat";
-var INFO_TIMEOUT = "Actions auto-complete on timeout";
-var INFO_REJECTION = "This word will reject you from the conversation";
-var INFO_FILTER = "Words can be auto rejected by preferance with a filter";
-
 // informational header, this can change from screen to screen to indicate use information
 var info = {
     mation: document.getElementById('info'),
     inProg: null,
     chat: function(){
-        info.mation.innerHTML = INFO_CHAT;
+        info.mation.innerHTML = "Chat: Pressing done while text box empty, ends chat";
         info.inProg = setTimeout(function(){
-            info.mation.innerHTML = INFO_TIMEOUT;
+            info.mation.innerHTML = "Actions auto-complete on timeout";
         }, (WAIT_TIME / 2 * 1000));
     },
     home: function(){
         if(info.inProg){clearTimeout(info.inProg);}
-        info.mation.innerHTML = INFO_HOME;
+        info.mation.innerHTML = "Pick or create topic";
     }
 }
 
@@ -248,11 +243,6 @@ var time = { // dep: document
     }, // Should probably be done with a seperate element but for the sake of simplicity this one is reused
 }
 
-// send text
-var SEND_TOPIC = "Make Topic ";
-var SEND_WAIT = "Wait ";
-var SEND_RESPONSE = "Done ";
-
 // Bottom of page text bar footer object
 var textBar = { // dep: document, send
     entry: document.getElementById('textEntry'),
@@ -264,19 +254,18 @@ var textBar = { // dep: document, send
         textBar.button.onclick = send.passOn;
     },
     changeAction: function(mode){
-        if(mode === BREAK){
-            textBar.btnTxt.innerHTML = SEND_TOPIC;
+        if(mode === TOPIC){
+            textBar.btnTxt.innerHTML = "Make Topic ";
             textBar.entry.value = "";
         } else if ( mode === CHAT ){
-            textBar.btnTxt.innerHTML = SEND_RESPONSE;
+            textBar.btnTxt.innerHTML = "Done ";
             textBar.entry.value = "";
         } else if ( mode === BLOCK){
-            textBar.btnTxt.innerHTML = SEND_WAIT;
+            textBar.btnTxt.innerHTML = "Wait ";
         }
     }
 }
 
-var WAIT_MSG = "Waiting for topics...";
 // anything to do with the topic selection buttons or row data
 var rows = { // dep: document, trans
     button: [],
@@ -285,14 +274,14 @@ var rows = { // dep: document, trans
         for(var i = 0; i < NUM_ENTRIES; i++){                        // for every entry and
             rows.dialog.push(document.getElementById("dialog" + i)); // store dialog elements
             rows.button.push(document.getElementById("button" + i)); // store a button element
-            rows.button[i].onclick = trans.selBreak;                 // give the button its action
+            rows.button[i].onclick = trans.selectTopic;              // give the button its action
         }
     },
     reset: function() {
-        for(var i = 0; i < NUM_ENTRIES; i++){           // for every entry and
-            if(i){rows.dialog[i].innerHTML = "";}       // set dialog to be empty
-            else{rows.dialog[i].innerHTML = WAIT_MSG;}  // set a default entry for dialog 0
-            rows.button[i].style.visibility = "hidden"; // hide the buttons
+        for(var i = 0; i < NUM_ENTRIES; i++){                         // for every entry
+            if(i){rows.dialog[i].innerHTML = "";}                     // set dialog to be empty
+            else{rows.dialog[i].innerHTML = "Waiting for topics...";} // set a default entry for dialog 0
+            rows.button[i].style.visibility = "hidden";               // hide the buttons
         }
     }
 }
