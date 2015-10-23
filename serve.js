@@ -67,8 +67,8 @@ var sock = { // depends on match
     use: function(server){sock.io = sock.io(server);},
     listen: function (){
         sock.io.on('connection', function(socket){
-            // put user in the client list and "subscibe them to new and existing topics
-            match.add(socket.id);
+            console.log(socket.id);  // demonstrate socket information
+            match.add(socket.id); // put in client list and "subscibe" to new and existing topics
             // ------ Creating topics ---------
             socket.on('create', function(txt){match.updateTo(socket.id, txt);});
             socket.on("post", function(){match.post(socket.id);});
@@ -102,6 +102,9 @@ var serve = { // depends on everything
         app.use(require('compression')());
         app.use(serve.express.static(__dirname + '/views'));
         app.get('/', function(req, res){res.sendFile(__dirname + '/index.html');});
+        app.get('/beta', function(req, res){res.sendFile(__dirname + '/views/beta.html');});
+        app.get('/about', function(req, res){res.sendFile(__dirname + '/views/about.html');});
+        app.get('/login', function(req, res){res.sendFile(__dirname + '/views/login.html');});
         sock.use(http);    // have sockets upgrade with http sever
         sock.listen();     // listen for socket connections
         http.listen(3000); // listen on port 3000
