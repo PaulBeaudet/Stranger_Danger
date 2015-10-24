@@ -16,8 +16,8 @@
              <div class="header clearfix">
                 <nav>
                     <ul class="nav nav-pills pull-right">
-                        <li role="presentation"><a href="#">Story</a></li>
-                        <li role="presentation"><a href="#">Contact</a></li>
+                        <li role="presentation"><a href="/about">Story</a></li>
+                        <li role="presentation"><a href="/about">Contact</a></li>
                         <li role="presentation" class="active"><a href="/beta#signup">Sign Up</a></li>
                         <li role="presentation"><a href="#">Login</a></li>
                   </ul>
@@ -27,17 +27,17 @@
 <!--    sign in form-->
             <div class="jumbotron" id="signup">
                 <h1>Sign in</h1>
-                <form>
+                <form method="post">
                     <div class="form-group">
                         <label for="signupEmail"> Email Address</label>
-                        <input type="email" class="form-control" id = "signupEmail">
+                        <input type="email" class="form-control" name="email" required="true">
                     </div>
                     <div class="form-group">
                         <label for="signupPassword"> Password</label>
-                        <input type="password" class="form-control" id = "signupPassword">
+                        <input type="password" class="form-control" name="password" required="true">
                     </div>
-                    <a href="/" class="btn btn-lg btn-success">Submit</a>
-<!--                    <button type="submit" class="btn btn-lg btn-success">Submit</button>-->
+<!--                    <a href="/" class="btn btn-lg btn-success">Submit</a>-->
+                    <input type="submit" id="submit" value="submit" class="btn btn-lg btn-success">
                 </form>
             </div>
 <!--footer-->
@@ -49,6 +49,6 @@
 <!--        <script type="text/javascript" src="cordova.js"></script>-->
         <script src="bower_components/jquery/dist/jquery.min.js"></script>
         <script src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
-<!--        <script type="text/javascript" src="js/index.js"></script>-->
+<!--        <script type="text/javascript" src="js/login.js"></script>-->
     </body>
 </html>

@@ -93,18 +93,68 @@ var sock = { // depends on match
     },
 }
 
+/*
+var mongo = { // depends on: mongoose
+    SEVER: 'mongodb://localhost/paidEntry',
+    db: require('mongoose'),
+    User: null,
+    connect: function(){
+        mongo.db.connect(mongo.SEVER);
+        mongo.User = mongo.db.model('User', new mongo.db.Schema({
+            email: {type: String, required: '{PATH} is required', unique: true},
+            password: {type: String, required: '{PATH} is required', unique: true},
+        }));
+    },
+}
+
+var client = { // depends on client-sessions and mongo
+    cookie: require('client-sessions'),
+    init: function(){
+        client.cookie({
+            cookieName: 'anonChat',
+            secret: process.env.SESSION_SECRET,
+            duration: 30 * 60 * 1000,
+            activeDuration: 5 * 60 * 1000,
+        });
+    },
+} */
+
+var testAuth = {
+    cred: [{email: 'inof8or@gmail.com', password: 'password'}, {email: 'fred@flintstone.com', password: 'rocks'}],
+    check: function(attempt){
+        for ( var i = 0; i < testAuth.cred.length; i++){
+            if (attempt.email === testAuth.cred[i].email && attempt.password === testAuth.cred[i].password){
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 // Express server
 var serve = { // depends on everything
     express: require('express'),
+    parse: require('body-parser'),
     theSite: function(){
         var app = serve.express();
-        var http = require('http').Server(app);
-        app.use(require('compression')());
-        app.use(serve.express.static(__dirname + '/views'));
-        app.get('/', function(req, res){res.sendFile(__dirname + '/index.html');});
-        app.get('/beta', function(req, res){res.sendFile(__dirname + '/views/beta.html');});
+        var http = require('http').Server(app);            // http server for express framework
+        app.use(require('compression')());                 // gzipping for requested pages
+        app.use(serve.parse.json());                       // support JSON-encoded bodies
+        app.use(serve.parse.urlencoded({extended: true})); // support URL-encoded bodies
+        //client.init();
+        //app.use(require('csurf')());                     // Cross site request forgery tokens
+        app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (sockets, jquery, bootstrap)
+        // make static routes to pages
+        //app.get('/', function(req, res){res.sendFile(__dirname + '/views/topic.html');});
+        app.get('/', function(req, res){res.sendFile(__dirname + '/views/beta.html');});
         app.get('/about', function(req, res){res.sendFile(__dirname + '/views/about.html');});
         app.get('/login', function(req, res){res.sendFile(__dirname + '/views/login.html');});
+        app.post('/login', function(req, res){
+            var cred = {email: req.body.email, password: req.body.password};
+            if(testAuth.check(cred)){
+                res.redirect("/topic.html");
+            } else { res.redirect('/#signup');}
+        });
         sock.use(http);    // have sockets upgrade with http sever
         sock.listen();     // listen for socket connections
         http.listen(3000); // listen on port 3000
