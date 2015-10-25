@@ -2,19 +2,12 @@ doctype html
 html
   head
     meta(name='format-detection', content='telephone=no')
-    |         
     meta(name='msapplication-tap-highlight', content='no')
-    |         
     meta(name='viewport', content='user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width')
-    |         
     link(rel='stylesheet', href='bower_components/bootstrap/dist/css/bootstrap.min.css')
-    |         
     link(rel='stylesheet', href='bower_components/bootstrap/dist/css/bootstrap-theme.min.css')
-    |         
     link(rel='stylesheet', type='text/css', href='css/index.css')
-    |         
     title Stangers! Beta
-  |     
   body
     // Value prop
     .container
@@ -23,45 +16,31 @@ html
           ul.nav.nav-pills.pull-right
             li(role='presentation')
               a(href='/about') Story
-            |                         
             li(role='presentation')
               a(href='/about') Contact
-            |                         
             li.active(role='presentation')
               a(href='#signup') Sign Up
-            |                         
             li(role='presentation')
               a(href='/login') Login
-        |                 
         h3.text-muted OurService
-      |             
       .jumbotron
         h1 Turn strangers into friends!
-        |                 
         p.lead It could be easy with OurSevice, help make it happen
-        |                 
         ul
           li
             | Beta Program - $19.95 Be involved with the testing, see it first!
             a(href='#beta') ~Learn more
-          |                     
           li
             | Lifetime - $299 Exclusive perks for early backers
             a(href='#lifetime') ~Learn more
-          |                     
           li Regular Membership - $9.95/month or $99/year on release
-        |                 
-        i.text-center  Beta and Lifetime are limited time offerings to help launch ourService 
-        |                 
+        i.text-center  Beta and Lifetime are limited time offerings to help launch ourService
         div
-          i.text-center  While in beta OurService is paid sign-up only 
-      |             
+          i.text-center  While in beta OurService is paid sign-up only
       .row.marketing
         h1 About OurService
-        |                 
         .col-lg-6
           h4 Say what!?
-          |                     
           p
             | Our service looks to empower people to connect with strangers in a fast,
             | safe and convienient way, through timed text.
@@ -70,28 +49,22 @@ html
             | even remain strange long after becoming aquented! OurService acts a gateway
             | to creating a strong connection, providing a new shared context with
             | people of simiar interest.
-          |                     
           h4 Give me friends?
-          |                     
           p
             | It should be noted that OurService holds no promise of forcing anyone to be
             | your friend. OurService hopes to help create situations where any two users become
             | comfortable with each other enough that they want to continue the conversation
             | regularly IRL ( in real life ) or in more identifing contexts like other networks,
             | phone, or video chat.
-        |                 
         .col-lg-6
           h4 How does it work?
-          |                     
           p
             | It realy easy to get started! Just type any topic that interest you at the
             | moment and ourService shows your topic to similar users or just whoever happens
             | to be on at the time. If the topic peaks someone interest they can select it
             | and WHAMIE BAM! They are in a real time conversation with you. Simple as that. Stop
             | talking to repeat the process, keep talking to potentially make a new friend.
-          |                     
           h4 Is OurService Anonomous?
-          |                     
           p
             | Short answer is yes, the long answer is NO.
             | Asking, anonmous to who? Makes this question more clear.
@@ -101,38 +74,28 @@ html
             | Once users get talking, our paying customers can label users they have had good conversations
             | with. The label basically favorites the person so that if they are on again our robots know to
             | prioritize making the match again.
-          |                     
           p
             | OurService, does keep track of everyone by a unique ID and stores unique words
             | that they use in order to determine which other users might want to see their topics. OurService
             | strictly uses user data to provide value to the service and its parent companies. Please
             | see our privacy policy for more details about how the data can and cannot be used.
-      // end row marketing
       // beta program
       #beta.jumbotron
         .row
           h1 Beta: Help us get started!
-          |                     
           h2.lead Be part of the begining of something that will be great
-          |                     
           .col-lg-6
             p
               | Will include the following
-              li Become part of founding ecosytem 
-              |                             
+              li Become part of founding ecosytem
               li Make friends with folks in your profession that will be targeted for beta
-            |                         
             i.text-center  Service acccess till the time of full release ( 2-4 months )
-          |                     
           .col-lg-6
             a.btn.btn-lg.btn-success(href='#signup') Sign up $19.95
-      |             
       .row
         h1  About Beta
-        |                 
         .col-lg-6
           h4 Becoming part of the ecosystem
-          |                     
           p
             | It may be a bit quite at first, but OurService will grow to be bustling place.
             | Watching this ecosystem grow will be a unique experience.
@@ -140,25 +103,19 @@ html
             | proffesional and social developent of Office and IT prossionals that type regularly enough to
             | be good text conversationalist already. Who knows though, maybe people who rarely type
             | will find a new found reason to! OurService can empower them in more than one way.
-          |                     
           h4 Unique situation
-          |                     
           p
             | Beta and Lifetime users will share the unique context of being on the service first.
             | The first Beta users will be likely mostly be based in Southern NH because that
             | is where OurService is being developed.
             | Many people might already know each other or have a friend of a friend
             | in common on OurService but they will only ever find out by chatting.
-        |                 
         .col-lg-6
           h4 Shape what happens
-          |                     
           p
             | There are basic design rules to how OurSerice works, but ultimately our beta users are
             | really going to show where OurService can be valuable.
-          |                     
           h4 Beta goals
-          |                     
           p
             | OurService is going to be a great resource for finding unique serendipidous interactions
             | Gaining the critical mass is important for this, but first we are going to have help
@@ -168,66 +125,47 @@ html
       // sign up form
       #signup.jumbotron
         h1 Sign up for OurService!
-        |                 
-        form
+        form(method='post')
+          input(type='hidden', name="_csrf", value=csrfToken)
           .form-group
             label(for='signupEmail')  Email Address
-            |                         
-            input#signupEmail.form-control(type='email')
-          |                     
+            input#signupEmail.form-control(type='email', name="email")
           .form-group
             label(for='signupPassword')  Password
-            |                         
-            input#signupPassword.form-control(type='password')
-          |                     
+            input#signupPassword.form-control(type='password', name="password")
           .form-group
             label(for='confirmPassword')  Confirm Password
-            |                         
-            input#confirmPassword.form-control(type='password')
-          |                     
+            input#confirmPassword.form-control(type='password', name="confirmPassword")
           .radio
             label
-              input#planOption1(type='radio', name='optionsRadios', value='option1', checked='')
+              input#planOption1(type='radio', name='optionsRadios', value='Beta', checked='')
               |                             Beta $19.95
-          |                     
           .radio
             label
-              input#planOption2(type='radio', name='optionsRadios', value='option2')
+              input#planOption2(type='radio', name='optionsRadios', value='Lifetime')
               |                             Lifetime $299
-          |                     
           .form-group
             label(for='signupBilling')  Billing info
-            |                         
             input#confirmPassword.form-control(type='password')
-          |                     
-          button.btn.btn-lg.btn-success(type='submit') Submit
+          input#submit.btn.btn-lg.btn-success(type='submit', value='submit')
       // lifetime program
       #lifetime.jumbotron
         .row
           h1 Lifetime: Say you made it possible
-          |                     
           h2.lead Limited time exclusive option to early adopters
-          |                     
           .col-lg-6
             p
               | Will include the following
-              li Life time service access 
-              |                             
+              li Life time service access
               li Special attention, to increase quality of service
-              |                             
               li Recongnition of support
-            |                         
             i.text-center  We will have a backer&apos;s wall in the about section of our site
-          |                     
           .col-lg-6
             a.btn.btn-lg.btn-success(href='#signup') Sign up $299
-      |             
       .row
         h1  About Lifetime
-        |                 
         .col-lg-6
           h4 Becoming part of the ecosystem
-          |                     
           p
             | It may be a bit quite at first, but OurService will grow to be bustling place.
             | Watching this ecosystem grow will be a unique experience.
@@ -235,26 +173,20 @@ html
             | proffesional and social developent of Office and IT prossionals that type regularly enough to
             | be good text conversationalist already. Who knows though, maybe people who rarely type
             | will find a new found reason to! OurService can empower them in more than one way.
-          |                     
           h4 Your name on the wall
-          |                     
           p
             | Lifetime members forever have a place in our offical about page. People often say &quot;When you
             | make it, remember everyone that helped&quot;. We plan to.
-          |                     
           h4 Personal support
-          |                     
           p
             | The OurService team will always work closley with our lifetime members to make sure OurService
             | provides the best value it can. Lifetime members have backed us and we aim to return the favor
             | ten fold.
-        |                 
         .col-lg-6
           blockquote
             p
               | Getting a business going is a rosey thing from the outside. It is easy to see all of
               | the successes and the present glory those successes have.
-            |                         
             p
               | &quot;Truth is, starting something from nothing is a long strugle.
               | Creating a company that provides more value than it takes is something I have
@@ -263,15 +195,12 @@ html
               | that celebrates the pursuit of dreams. Lifetime membership provides more than the value of
               | OurService for life, it reconizes that you are core believer
               | in the OurService team and myself&quot;
-            |                         
             footer
-              | Paul Beaudet 
+              | Paul Beaudet
               cite(title='Source Title') CEO OurService
       // footer
       footer.footer
         p &copy; OurService 2015 ~ Make all the things!
-    // end of container
     // Javescript dependencies
     script(src='bower_components/jquery/dist/jquery.min.js')
-    |         
     script(src='bower_components/bootstrap/dist/js/bootstrap.min.js')

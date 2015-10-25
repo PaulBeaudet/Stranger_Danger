@@ -94,15 +94,41 @@ var sock = { // depends on match
 }
 
 var mongo = { // depends on: mongoose
-    SEVER: 'mongodb://localhost/paidEntry',
+    SEVER: 'mongodb://localhost/anonChat',
     db: require('mongoose'),
-    User: null,
+    user: null,
     connect: function(){
         mongo.db.connect(mongo.SEVER);
-        mongo.User = mongo.db.model('User', new mongo.db.Schema({
+        var Schema = mongo.db.Schema;
+        var ObjectId = Schema.ObjectId;
+        mongo.user = mongo.db.model('User', new Schema({
+            id: ObjectId,
             email: {type: String, required: '{PATH} is required', unique: true},
-            password: {type: String, required: '{PATH} is required', unique: true},
+            password: {type: String, required: '{PATH} is required'},
+            //acountType: {type: String},
         }));
+    },
+    signup: function(req, res){
+        var user = new mongo.user({
+            email: req.body.email,
+            password: req.body.password,
+        });
+        user.save(function(err){
+            if(err){
+                console.log(err); // handle error later - taken email - bad information
+            } else {
+                res.redirect('/login');
+            }
+        });
+    },
+    login: function(req, res){
+        mongo.user.findOne({email: req.body.email}, function(err, user){
+            if(user && req.body.password === user.password){
+                res.redirect('/topic');
+            } else {
+                res.redirect('/#signup');
+            }
+        });
     },
 }
 
@@ -119,18 +145,6 @@ var cookie = { // depends on client-sessions and mongo
     },
 }
 
-var testAuth = {
-    cred: [{email: 'inof8or@gmail.com', password: 'password'}, {email: 'fred@flintstone.com', password: 'rocks'}],
-    check: function(attempt){
-        for ( var i = 0; i < testAuth.cred.length; i++){
-            if (attempt.email === testAuth.cred[i].email && attempt.password === testAuth.cred[i].password){
-                return true;
-            }
-        }
-        return false;
-    }
-}
-
 // Express server
 var serve = { // depends on everything
     express: require('express'),
@@ -141,24 +155,22 @@ var serve = { // depends on everything
 
         app.set('view engine', 'jade');                    // template with jade
 
+        mongo.connect();                                   // connect to mongo.db
         app.use(require('compression')());                 // gzipping for requested pages
         app.use(serve.parse.json());                       // support JSON-encoded bodies
         app.use(serve.parse.urlencoded({extended: true})); // support URL-encoded bodies
-        app.use(cookie.meWant());                          // support for cookies
+        //app.use(cookie.meWant());                          // support for cookies
         //app.use(cookie.surf());                            // Cross site request forgery tokens
 
         app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (sockets, jquery, bootstrap)
 
         var router = serve.express.Router();
-        router.get('/', function(req, res){res.render('beta', {csrfToken: req.csrfToken()});});
+        router.get('/', function(req, res){res.render('beta');}); // , {csrfToken: req.csrfToken()}
         router.get('/about', function(req,res){res.render('about');});
-        router.get('/login', function(req, res){res.render('login', {csrfToken: req.csrfToken()});});
+        router.get('/login', function(req, res){res.render('login');}); // , {csrfToken: req.csrfToken()}
         router.get('/topic', function(req, res){res.render('topic');});
-        router.post('/login', function(req, res){
-            var cred = {email: req.body.email, password: req.body.password};
-            if(testAuth.check(cred)){res.redirect("/topic");}
-            else { res.redirect('/#signup');}
-        });
+        router.post('/login', mongo.login); // handle logins
+        router.post('/', mongo.signup);     // handle sign-ups
         app.use(router);   // tell app what router to use
         sock.use(http);    // have sockets upgrade with http sever
         sock.listen();     // listen for socket connections
