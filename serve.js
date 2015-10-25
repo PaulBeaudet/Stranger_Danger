@@ -123,19 +123,19 @@ var mongo = { // depends on: mongoose
             if(user && mongo.hash.compareSync(req.body.password, user.password)){
                 req.user = user;
                 delete req.user.password;
-                req.anonChat.user = user; //
+                req.session.user = user; //
                 res.redirect('/topic');
             } else {res.redirect('/#signup');}
         });
     },
     auth: function(render){
         return function(req, res){
-            if(req.anonChat && req.anonChat.user){
-                mongo.user.findOne({email: req.anonChat.user.email}, function(err, user){
+            if(req.session && req.session.user){
+                mongo.user.findOne({email: req.session.user.email}, function(err, user){
                     if(user){
                         res.render(render);
                     } else {
-                        req.anonChat.reset();
+                        req.session.reset();
                         res.redirect('/#signup');
                     }
                 });
@@ -146,10 +146,9 @@ var mongo = { // depends on: mongoose
 
 var cookie = { // depends on client-sessions and mongo
     session: require('client-sessions'),
-    //surf: require('csurf'),
     meWant: function(){
         return cookie.session({
-            cookieName: 'anonChat',
+            cookieName: 'session',
             secret: process.env.SESSION_SECRET,
             duration: 30 * 60 * 1000,
             activeDuration: 5 * 60 * 1000,
@@ -172,14 +171,14 @@ var serve = { // depends on everything
         app.use(serve.parse.json());                       // support JSON-encoded bodies
         app.use(serve.parse.urlencoded({extended: true})); // support URL-encoded bodies
         app.use(cookie.meWant());                          // support for cookies
-        //app.use(cookie.surf());                            // Cross site request forgery tokens
+        app.use(require('csurf')());                       // Cross site request forgery tokens
 
         app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (sockets, jquery, bootstrap)
 
         var router = serve.express.Router();
-        router.get('/', function(req, res){res.render('beta');}); // , {csrfToken: req.csrfToken()}
+        router.get('/', function(req, res){res.render('beta', {csrfToken: req.csrfToken()});}); //
         router.get('/about', function(req, res){res.render('about');});
-        router.get('/login', function(req, res){res.render('login');}); // , {csrfToken: req.csrfToken()}
+        router.get('/login', function(req, res){res.render('login', {csrfToken: req.csrfToken()});});
         router.get('/topic', mongo.auth('topic'));  // must be authenticated for this page
         router.post('/login', mongo.login);         // handle logins
         router.post('/', mongo.signup);             // handle sign-ups
