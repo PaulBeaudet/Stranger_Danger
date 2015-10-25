@@ -1,0 +1,45 @@
+doctype html
+html
+  head
+    meta(name='format-detection', content='telephone=no')
+    meta(name='msapplication-tap-highlight', content='no')
+    meta(name='viewport', content='user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width')
+    link(rel='stylesheet', href='bower_components/bootstrap/dist/css/bootstrap.min.css')
+    link(rel='stylesheet', href='bower_components/bootstrap/dist/css/bootstrap-theme.min.css')
+    link(rel='stylesheet', type='text/css', href='css/index.css')
+    title Stangers! Beta
+  body
+    // Value prop
+    .container
+      .header.clearfix
+        nav
+          ul.nav.nav-pills.pull-right
+            li(role='presentation')
+              a(href='/about') Story
+            li(role='presentation')
+              a(href='/about') Contact
+            li.active(role='presentation')
+              a(href='/beta#signup') Sign Up
+            li(role='presentation')
+              a(href='#') Login
+        h3.text-muted OurService
+      // sign in form
+      #signup.jumbotron
+        h1 Sign in
+        form(method='post')
+          input(type='hidden', name="_csrf", value=csrfToken)
+          .form-group
+            label(for='signupEmail')  Email Address
+            input.form-control(type='email', name='email', required='true')
+          .form-group
+            label(for='signupPassword')  Password
+            input.form-control(type='password', name='password', required='true')
+          input#submit.btn.btn-lg.btn-success(type='submit', value='submit')
+
+      // footer
+      footer.footer
+        p &copy; OurService 2015 ~ Make all the things!
+    // end of container
+    // Javescript dependencies
+    script(src='bower_components/jquery/dist/jquery.min.js')
+    script(src='bower_components/bootstrap/dist/js/bootstrap.min.js')

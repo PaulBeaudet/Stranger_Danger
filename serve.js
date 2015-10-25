@@ -93,7 +93,6 @@ var sock = { // depends on match
     },
 }
 
-/*
 var mongo = { // depends on: mongoose
     SEVER: 'mongodb://localhost/paidEntry',
     db: require('mongoose'),
@@ -107,17 +106,18 @@ var mongo = { // depends on: mongoose
     },
 }
 
-var client = { // depends on client-sessions and mongo
-    cookie: require('client-sessions'),
-    init: function(){
-        client.cookie({
+var cookie = { // depends on client-sessions and mongo
+    session: require('client-sessions'),
+    surf: require('csurf'),
+    meWant: function(){
+        return cookie.session({
             cookieName: 'anonChat',
             secret: process.env.SESSION_SECRET,
             duration: 30 * 60 * 1000,
             activeDuration: 5 * 60 * 1000,
         });
     },
-} */
+}
 
 var testAuth = {
     cred: [{email: 'inof8or@gmail.com', password: 'password'}, {email: 'fred@flintstone.com', password: 'rocks'}],
@@ -138,23 +138,28 @@ var serve = { // depends on everything
     theSite: function(){
         var app = serve.express();
         var http = require('http').Server(app);            // http server for express framework
+
+        app.set('view engine', 'jade');                    // template with jade
+
         app.use(require('compression')());                 // gzipping for requested pages
         app.use(serve.parse.json());                       // support JSON-encoded bodies
         app.use(serve.parse.urlencoded({extended: true})); // support URL-encoded bodies
-        //client.init();
-        //app.use(require('csurf')());                     // Cross site request forgery tokens
+        app.use(cookie.meWant());                          // support for cookies
+        //app.use(cookie.surf());                            // Cross site request forgery tokens
+
         app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (sockets, jquery, bootstrap)
-        // make static routes to pages
-        //app.get('/', function(req, res){res.sendFile(__dirname + '/views/topic.html');});
-        app.get('/', function(req, res){res.sendFile(__dirname + '/views/beta.html');});
-        app.get('/about', function(req, res){res.sendFile(__dirname + '/views/about.html');});
-        app.get('/login', function(req, res){res.sendFile(__dirname + '/views/login.html');});
-        app.post('/login', function(req, res){
+
+        var router = serve.express.Router();
+        router.get('/', function(req, res){res.render('beta', {csrfToken: req.csrfToken()});});
+        router.get('/about', function(req,res){res.render('about');});
+        router.get('/login', function(req, res){res.render('login', {csrfToken: req.csrfToken()});});
+        router.get('/topic', function(req, res){res.render('topic');});
+        router.post('/login', function(req, res){
             var cred = {email: req.body.email, password: req.body.password};
-            if(testAuth.check(cred)){
-                res.redirect("/topic.html");
-            } else { res.redirect('/#signup');}
+            if(testAuth.check(cred)){res.redirect("/topic");}
+            else { res.redirect('/#signup');}
         });
+        app.use(router);   // tell app what router to use
         sock.use(http);    // have sockets upgrade with http sever
         sock.listen();     // listen for socket connections
         http.listen(3000); // listen on port 3000
