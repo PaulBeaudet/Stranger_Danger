@@ -96,11 +96,11 @@ var sock = { // depends on match
 var mongo = { // depends on: mongoose
     SEVER: 'mongodb://localhost/anonChat',
     db: require('mongoose'),
+    hash: require('bcryptjs'),
     user: null,
     connect: function(){
         mongo.db.connect(mongo.SEVER);
-        var Schema = mongo.db.Schema;
-        var ObjectId = Schema.ObjectId;
+        var Schema = mongo.db.Schema; var ObjectId = Schema.ObjectId;
         mongo.user = mongo.db.model('User', new Schema({
             id: ObjectId,
             email: {type: String, required: '{PATH} is required', unique: true},
@@ -111,24 +111,21 @@ var mongo = { // depends on: mongoose
     signup: function(req, res){
         var user = new mongo.user({
             email: req.body.email,
-            password: req.body.password,
+            password: mongo.hash.hashSync(req.body.password, mongo.hash.genSaltSync(10)),
         });
         user.save(function(err){
-            if(err){
-                console.log(err); // handle error later - taken email - bad information
-            } else {
-                res.redirect('/login');
-            }
+            if(err){console.log(err); }
+            else { res.redirect('/login');}
         });
     },
     login: function(req, res){
         mongo.user.findOne({email: req.body.email}, function(err, user){
-            if(user && req.body.password === user.password){
+            if(user && mongo.hash.compareSync(req.body.password, user.password)){
+                req.user = user;
+                delete req.user.password;
                 req.anonChat.user = user; //
                 res.redirect('/topic');
-            } else {
-                res.redirect('/#signup');
-            }
+            } else {res.redirect('/#signup');}
         });
     },
     auth: function(render){
@@ -136,16 +133,13 @@ var mongo = { // depends on: mongoose
             if(req.anonChat && req.anonChat.user){
                 mongo.user.findOne({email: req.anonChat.user.email}, function(err, user){
                     if(user){
-                        //res.locals.user = user; // access user information client side
                         res.render(render);
                     } else {
                         req.anonChat.reset();
                         res.redirect('/#signup');
                     }
                 });
-            } else {
-                res.redirect('/#signup');
-            }
+            } else {res.redirect('/#signup');}
         }
     },
 }

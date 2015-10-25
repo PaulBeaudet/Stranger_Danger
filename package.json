@@ -9,6 +9,7 @@
   "author": "Paul Beaudet",
   "license": "UNLICENCED",
   "dependencies": {
+    "bcryptjs": "^2.3.0",
     "body-parser": "^1.14.1",
     "client-sessions": "^0.7.0",
     "compression": "^1.6.0",
