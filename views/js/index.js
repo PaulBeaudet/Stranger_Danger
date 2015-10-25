@@ -54,7 +54,7 @@ var trans = { // dep: send, time, rows, textBar
         trans.ition({perspec: "other", head: rows.dialog[row].innerHTML});
         time.countDown(SEND_TIMER, send.passOn); // set stopwatch for sending a message
     },
-    gotBreak: function(user){         // someone responded to users personal
+    gotTopic: function(user){         // someone responded to users personal
         send.to = user;               // keep track of who we are talking to
         time.stopSend("");            // stop time to live timer
         send.mode = BLOCK;            // signal user is listening to someones response
@@ -182,7 +182,7 @@ var sock = {  // dep: sockets.io, topic, trans, edit, send
         // Topic starting components
         sock.et.on('post', topic.post);         // starts timer and stores user of topic
         sock.et.on('topic', topic.ttl);         // grab time to live topics: timed from the getgo
-        sock.et.on('chatInit', trans.gotBreak); // someone wants to chat with us
+        sock.et.on('chatInit', trans.gotTopic); // someone wants to chat with us
         // real time chat reception components
         sock.et.on('toMe', edit.type);          // recieve Real Time Text
         sock.et.on('yourTurn', edit.myTurn);    // signals when it is this clients turn to type
@@ -214,7 +214,7 @@ var time = { // dep: document
     countDown: function(pos, ondone){
         if (time.counter[pos]) {
             time.counter[pos]--;
-            time.rs[pos].innerHTML = "T-" + time.counter[pos];
+            time.rs[pos].innerHTML = "T-" + time.counter[pos] + " ";
             time.inProg[pos] = setTimeout(function(){time.countDown(pos, ondone);}, 1000);
         } else {
             time.rs[pos].innerHTML = "";
