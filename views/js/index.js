@@ -45,9 +45,8 @@ var edit = { // dep: rows, time, textBar, edit
 
 // transition handling of visual elements
 var trans = { // dep: send, time, rows, textBar
-    selectTopic: function(){  // respond to someone else's topic
-        var row = this.id[this.id.length-1];
-        var user = topic.user[parseInt(row)];
+    selectTopic: function(row){  // respond to someone else's topic
+        var user = topic.user[row];
         send.to = user;
         sock.et.emit("selectTopic", user); // signal which user that needs to be connected with
         send.mode = CHAT; // signal to the sender that is it now time to chat
@@ -77,6 +76,56 @@ var trans = { // dep: send, time, rows, textBar
         textBar.changeAction(send.mode); // make sure send mode is properly set before trans.ition called
     }
 }
+
+// logic for recieving topics
+var topic = { // dep: rows, time,
+    user: [],
+    ttl: function(ttl){
+        var row = 0;
+        for(row; topic.user[row]; row++){ // check if this is coming from one of the existing listings
+            if(topic.user[row] == ttl.user){
+                rows.dialog[row].innerHTML = ttl.text; // update changing real time text
+                return;                                // if user was found this is end of what we need to do
+            }
+        } // in the case of getting this topic for the first time
+        if( row < NUM_ENTRIES ){ // make sure there is still room on the page
+            topic.user.push(ttl.user);                        // add this user to our list
+            rows.setEvent(row, ttl.text);
+            time.counter[row] = ttl.ttl;                      // give counter at our row the right time to live
+            time.countDown(row, function(){topic.done(row)}); // Set timer on this row
+        } // else { console.log("server sent me too many topics"); }
+    },
+    done: function(row) {           // this is the action to occur on count end
+        rows.button[row].style.visibility = "hidden"; // on end hide button
+        rows.dialog[row].innerHTML = "";              // on end remove dialog
+        topic.user.splice(row, 1);                    // on end remove this user
+    }
+}
+
+// anything to do with the topic selection buttons or row data
+var rows = { // dep: document, trans
+    button: [],
+    dialog: [],
+    init: function() { // actions for selection of topic
+        for(var i = 0; i < NUM_ENTRIES; i++){                        // for every entry and
+            rows.dialog.push(document.getElementById("dialog" + i)); // store dialog elements
+            rows.button.push(document.getElementById("button" + i)); // store a button element
+        }
+    },
+    reset: function() {
+        for(var i = 0; i < NUM_ENTRIES; i++){                         // for every entry
+            if(i){rows.dialog[i].innerHTML = "";}                     // set dialog to be empty
+            else{rows.dialog[i].innerHTML = "Waiting for topics...";} // set a default entry for dialog 0
+            rows.button[i].style.visibility = "hidden";               // hide the buttons
+        }
+    },
+    setEvent: function(row, topic){
+        rows.button[row].style.visibility = "visible";
+        rows.dialog[row].innerHTML = topic;
+        rows.button[row].onclick = function(){trans.selectTopic(row);};
+    },
+}
+
 
 // Typing modes
 var TOPIC = 0; // users post or select topics
@@ -139,48 +188,11 @@ var send = { // dep: sock, trans, edit, textBar
     }
 }
 
-// logic for recieving topics
-var topic = { // dep: rows, time, edit
-    user: [],
-    post: function(ttl){ // re-adjust ttl (time to live) on post
-        for(var row = 0; topic.user[row]; row++){
-            if(topic.user[row] == ttl.user){
-                clearTimeout(time.inProg[row]);                   // give counter at our row the right time to live
-                time.counter[row] = ttl.ttl;
-                time.countDown(row, function(){topic.done(row)}); // Set timer on this row
-                return;
-            }
-        }
-    },
-    ttl: function(ttl){
-        var row = 0;
-        for(row; topic.user[row]; row++){ // check if this is coming from one of the existing listings
-            if(topic.user[row] == ttl.user){
-                edit.type({text: ttl.text, row: row}); // update changing real time text
-                return;                                // if user was found this is end of what we need to do
-            }
-        } // in the case of getting this topic for the first time
-        if( row < NUM_ENTRIES ){ // make sure there is still room on the page
-            topic.user.push(ttl.user);                        // add this user to our list
-            rows.button[row].style.visibility = "visible";    // make the button visible to the user
-            time.counter[row] = ttl.ttl;                      // give counter at our row the right time to live
-            time.countDown(row, function(){topic.done(row)}); // Set timer on this row
-            edit.type({text: ttl.text, row: row});            // display first text
-        } else { console.log("server sent me too many topics"); }
-    },
-    done: function(row) {           // this is the action to occur on count end
-        rows.button[row].style.visibility = "hidden"; // on end hide button
-        rows.dialog[row].innerHTML = "";              // on end remove dialog
-        topic.user.splice(row, 1);                    // on end remove this user
-    }
-}
-
 // -- socket handler
 var sock = {  // dep: sockets.io, topic, trans, edit, send
     et: io(), // connect to server the page was served from
     init: function (){
         // Topic starting components
-        sock.et.on('post', topic.post);         // starts timer and stores user of topic
         sock.et.on('topic', topic.ttl);         // grab time to live topics: timed from the getgo
         sock.et.on('chatInit', trans.gotTopic); // someone wants to chat with us
         // real time chat reception components
@@ -262,26 +274,6 @@ var textBar = { // dep: document, send
             textBar.entry.value = "";
         } else if ( mode === BLOCK){
             textBar.btnTxt.innerHTML = "Wait ";
-        }
-    }
-}
-
-// anything to do with the topic selection buttons or row data
-var rows = { // dep: document, trans
-    button: [],
-    dialog: [],
-    init: function() { // actions for selection of topic
-        for(var i = 0; i < NUM_ENTRIES; i++){                        // for every entry and
-            rows.dialog.push(document.getElementById("dialog" + i)); // store dialog elements
-            rows.button.push(document.getElementById("button" + i)); // store a button element
-            rows.button[i].onclick = trans.selectTopic;              // give the button its action
-        }
-    },
-    reset: function() {
-        for(var i = 0; i < NUM_ENTRIES; i++){                         // for every entry
-            if(i){rows.dialog[i].innerHTML = "";}                     // set dialog to be empty
-            else{rows.dialog[i].innerHTML = "Waiting for topics...";} // set a default entry for dialog 0
-            rows.button[i].style.visibility = "hidden";               // hide the buttons
         }
     }
 }
