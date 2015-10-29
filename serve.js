@@ -6,6 +6,19 @@ var MINIMUM_TTL = 5; // minimum amound of seconds that is applicable for a getti
 var READ_TIME = WAIT_TIME * 1000 / NUM_ENTRIES - 100; // ms to wait for a user to read a topic
 // in this way the server will never send out more topics than a client can handle
 // because the first entry should expire before the NUM_ENTRIES + 1(th) is sent leaving a possible spot to fill
+var GEN_TOPICS = [
+    "What is a personal passion project you are working on",
+    "what do you do for a living",
+    "vi or emacs",
+    "Star Wars or Start Trek",
+    "Where is the most exciting place you have been to?",
+    "How are you going to change the world?"
+]
+
+// distribute topics
+var dist = {
+
+}
 
 // handles matching yet to be chating clients
 var match = { // depends on sock
@@ -36,6 +49,7 @@ var match = { // depends on sock
         // if good ttl and yet to be taken and not ourself : success condition for a match
         if(thisTry.ttl > MINIMUM_TTL && thisTry.hasMyTopic.indexOf(user) === -1 && thisTry.user != user){
             sock.io.to(user).emit('topic', {user: thisTry.user, text: thisTry.text, ttl: thisTry.ttl});
+            console.log("sent topic: " + thisTry.text);
             match.clients[checkUser].hasMyTopic.push(user); // note that this user now has this topic
         } else {
             checkUser--;                                    // decrement user to check
@@ -44,8 +58,8 @@ var match = { // depends on sock
     },
     post: function(user){
         var index = match.clients.map(function(x){return x.user;}).indexOf(user); // get user's index number
-        match.clients[index].ttl = WAIT_TIME;
-        setTimeout(function(){ match.reduceTTL(user); }, 1000);
+        match.clients[index].ttl = WAIT_TIME;                                     // reset wait time
+        setTimeout(function(){ match.reduceTTL(user); }, 1000);                   // reduce ttl every second
     },
     reduceTTL: function(user){
         var index = match.clients.map(function(x){return x.user;}).indexOf(user); // get user's index number
@@ -150,8 +164,10 @@ var cookie = { // depends on client-sessions and mongo
         return cookie.session({
             cookieName: 'session',
             secret: process.env.SESSION_SECRET,
-            duration: 30 * 60 * 1000,
-            activeDuration: 5 * 60 * 1000,
+            duration: 8 * 60 * 60 * 1000,  // cookie times out in 8 hours
+            activeDuration: 5 * 60 * 1000, // activity extends durration 5 minutes
+            httpOnly: true,                // block browser access to cookies
+            //secure: true,                // only allow cookies over HTTPS
         });
     },
 }
@@ -163,7 +179,6 @@ var serve = { // depends on everything
     theSite: function(){
         var app = serve.express();
         var http = require('http').Server(app);            // http server for express framework
-
         app.set('view engine', 'jade');                    // template with jade
 
         mongo.connect();                                   // connect to mongo.db
@@ -174,14 +189,15 @@ var serve = { // depends on everything
         app.use(require('csurf')());                       // Cross site request forgery tokens
 
         app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (sockets, jquery, bootstrap)
-
         var router = serve.express.Router();
-        router.get('/', function(req, res){res.render('beta', {csrfToken: req.csrfToken()});}); //
+        router.get('/', function(req, res){res.render('login', {csrfToken: req.csrfToken()});});
+        router.post('/', mongo.login);              // handle logins
+        router.get('/beta', function(req, res){res.render('beta', {csrfToken: req.csrfToken()});});
+        router.post('/beta', mongo.signup);         // handle sign-ups
         router.get('/about', function(req, res){res.render('about');});
         router.get('/login', function(req, res){res.render('login', {csrfToken: req.csrfToken()});});
-        router.get('/topic', mongo.auth('topic'));  // must be authenticated for this page
         router.post('/login', mongo.login);         // handle logins
-        router.post('/', mongo.signup);             // handle sign-ups
+        router.get('/topic', mongo.auth('topic'));  // must be authenticated for this page
         app.use(router);   // tell app what router to use
         sock.use(http);    // have sockets upgrade with http sever
         sock.listen();     // listen for socket connections
