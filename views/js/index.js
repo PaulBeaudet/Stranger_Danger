@@ -57,7 +57,7 @@ var trans = { // dep: send, time, rows, textBar
         send.to = user;               // keep track of who we are talking to
         time.stopSend("");            // stop time to live timer
         send.mode = BLOCK;            // signal user is listening to someones response
-        trans.ition({perspec: "you", head: document.getElementById("textEntry").value});
+        trans.ition({perspec: "you", head: textBar.entry.value});
     },
     ition: function(opener){
         time.clear();
@@ -77,8 +77,8 @@ var trans = { // dep: send, time, rows, textBar
     }
 }
 
-// logic for recieving topics
-var topic = { // dep: rows, time,
+// logic for recieving topics to subscribe to and matched topics
+var topic = { // dep: rows, time, $
     user: [],
     ttl: function(ttl){
         var row = 0;
@@ -89,16 +89,45 @@ var topic = { // dep: rows, time,
             }
         } // in the case of getting this topic for the first time
         if( row < NUM_ENTRIES ){ // make sure there is still room on the page
-            topic.user.push(ttl.user);                        // add this user to our list
-            rows.setEvent(row, ttl.text);
-            time.counter[row] = ttl.ttl;                      // give counter at our row the right time to live
-            time.countDown(row, function(){topic.done(row)}); // Set timer on this row
+            topic.user.push(ttl.user);                        // add this user topic or topic sub to our list
+            if($.type(ttl.user) === 'string'){                // if this is a pending topic
+                $('#icon' + row).addClass('glyphicon-plus');  // add the plus icon
+                time.counter[row] = ttl.ttl;                  // give counter at our row the right time to live
+                time.countDown(row, function(){topic.done(row)}); // Set timer on this row
+            } else {                                          // if this a topic to add
+                $('#icon' + row).addClass('glyphicon-plus');  // add the remove icon
+                $('#button' + row).click(function(){sock.et.emit('sub', topic.user[row]);});
+            }
+            rows.setEvent(row, ttl.text);                     // set visibility of button
         } // else { console.log("server sent me too many topics"); }
     },
     done: function(row) {           // this is the action to occur on count end
+        $('#icon' + row).removeClass('glyphicon-plus');
         rows.button[row].style.visibility = "hidden"; // on end hide button
         rows.dialog[row].innerHTML = "";              // on end remove dialog
         topic.user.splice(row, 1);                    // on end remove this user
+    },
+    start: function(row, first){ // at this juncture we will need to start the conversation
+        $('dialog0').html($('dialog' + row).html()); // set topic to first dialog item
+        var talkingTo = topic.user[row];
+        topic.user = [];                             // clear out the current topic ids stored
+        topic.user.push(talkingTo);                  // hold on to the user we are talking to at user[0]
+        time.clear();                                // clear outstanding timers
+        info.chat();                                 // set informational dialog
+        for(row = 0; topic.user[row]; i++){          // remove everything that was on topic screen
+            $('#icon' + row).removeClass('glyphicon-remove');
+            $('#icon' + row).removeClass('glyphicon-plus');
+            if(row){$('dialog' + row).html('');}
+            rows.button[row].style.visibility = "visible";
+        }
+        if(first){
+            send.mode = CHAT;
+            time.from(1, "You");
+        } else {
+            send.mode = BLOCK;
+            time.from(1, "other");
+        }
+        textBar.changeAction(send.mode);
     }
 }
 
