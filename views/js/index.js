@@ -80,26 +80,26 @@ var trans = { // dep: send, time, rows, textBar
 // logic for recieving topics to subscribe to and matched topics
 var topic = { // dep: rows, time, $
     user: [],
+    row: 0,
+    increment: function(){
+        topic.row++;
+        if(topic.row === NUM_ENTRIES){topic.row = 0;}
+    },
     ttl: function(ttl){
-        var row = 0;
-        for(row; topic.user[row]; row++){ // check if this is coming from one of the existing listings
-            if(topic.user[row] == ttl.user){
-                rows.dialog[row].innerHTML = ttl.text; // update changing real time text
-                return;                                // if user was found this is end of what we need to do
-            }
-        } // in the case of getting this topic for the first time
-        if( row < NUM_ENTRIES ){ // make sure there is still room on the page
-            topic.user.push(ttl.user);                        // add this user topic or topic sub to our list
-            if($.type(ttl.user) === 'string'){                // if this is a pending topic
-                $('#icon' + row).addClass('glyphicon-plus');  // add the plus icon
-                time.counter[row] = ttl.ttl;                  // give counter at our row the right time to live
-                time.countDown(row, function(){topic.done(row)}); // Set timer on this row
-            } else {                                          // if this a topic to add
-                $('#icon' + row).addClass('glyphicon-plus');  // add the remove icon
-                $('#button' + row).click(function(){sock.et.emit('sub', topic.user[row]);});
-            }
-            rows.setEvent(row, ttl.text);                     // set visibility of button
-        } // else { console.log("server sent me too many topics"); }
+        var row = topic.row;
+        topic.increment();
+        topic.user.push(ttl.user);                        // add this user topic or topic sub to our list
+        if($.type(ttl.user) === 'string'){                // if this is a pending conversation (got a user id)
+            $('#icon' + row).addClass('glyphicon-plus');  // add the plus icon
+            time.counter[edit.row] = ttl.ttl;                  // give counter at our row the right time to live
+            time.countDown(row, function(){topic.start(row)}); // Set timer on this row
+        } else {                                          // if this a topic to add
+            $('#icon' + row).addClass('glyphicon-plus');  // add the remove icon
+            $('#button' + row).click(function(){sock.et.emit('sub', topic.user[row]);});
+            time.counter[row] = ttl.ttl;                  // give counter at our row the right time to live
+            time.countDown(row, function(){topic.done(row)}); // Set timer on this row
+        }
+        rows.setEvent(row, ttl.text);                     // set visibility of button
     },
     done: function(row) {           // this is the action to occur on count end
         $('#icon' + row).removeClass('glyphicon-plus');

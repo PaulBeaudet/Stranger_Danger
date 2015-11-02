@@ -13,12 +13,7 @@ var GEN_TOPICS = [
     "Star Wars or Start Trek",
     "Where is the most exciting place you have been to?",
     "How are you going to change the world?"
-]
-
-// distribute topics
-var dist = {
-
-}
+];
 
 // handles matching yet to be chating clients
 var match = { // depends on sock
@@ -75,36 +70,121 @@ var match = { // depends on sock
     },
 }
 
+// distribute topics
+var topic = {
+    action: function(command, user, data){console.log(command + '-' + user + '-' + data);}, // replace with real command
+    db: [], // array of user objects "temporary till persistence understanding"
+    feed: function(user, action){                                     // set up feed to topics
+        topic.db.push({user:user, sub:[], timer: 0, lookedAt: 0}); // add a new user
+        topic.get(user);                                      // try again now that this user has been made
+    },
+    get: function(user){ // starts search for topics (booth to sub and to have)
+        var userID = topic.db.map(function(x){return x.user;}).indexOf(user); // determines index of user
+        if(userID > -1){
+            var topIndex = topic.db[userID].lookedAt;
+            if( topIndex < GEN_TOPICS.length){ // see if there are topics to display
+                topic.action('topic', user, {user:topIndex, text:GEN_TOPICS[topIndex], ttl:WAIT_TIME});
+                topic.db[userID].lookedAt++; // increment the number of topics that have been looked at
+            } else if (userID && topic.db[userID].sub && topic.db.length > 1){
+                // find a match if user is one other than first and has subs: question effort
+                process.nextTick(function(){topic.match(user, 0, 0);});
+            }
+            topic.db[userID].timer = setTimeout(function(){topic.get(user)}, READ_TIME);
+        }
+    },
+    match: function(user, interest, targetMatch){ // find a user with a the same topic
+        var userID = topic.db.map(function(x){return x.user;}).indexOf(user); // determines index of user
+        if(userID && topic.db.length > 1){        // Question our own existence and whether its worth the effort
+            if(targetMatch){                      // should allways be socket id after first run
+                var targetID = topic.db.map(function(x){return x.user;}).indexOf(targetMatch);
+                if(targetID > -1){ // sanity check: is target availible
+                    if(targetID < userID){topic.search(user, userID, targetID, interest);}
+                    else { topic.search(user, userID, userID - 1, interest);}
+                }
+            } else { topic.search(user, userID, userID - 1, interest); }
+            // given this is the first iteration start with previous user
+        }
+    },
+    search: function(user, userID, targetID, interest){  // BLOCKING, Focus is search one topic per prospect
+        var topicIndex = topic.db[userID].sub[interest]; // adress key of interest in question
+        if(topic.db[targetID].timer){                    // So long as this target is also looking
+            for (var i = 0; topic.db[userID].sub[i]; i++){   // for every availible topic prospect has
+                if(topic.db[userID].sub[i] === topicIndex){  // if their topic matches up with ours
+                    var found = topic.db[targetID].user;     // who matched?
+                    topic.action('topic', user, {user:found, text: GEN_TOPICS[topicIndex], ttl:WAIT_TIME});
+                    topic.action('topic', found, {user:user, text: GEN_TOPICS[topicIndex], ttl:WAIT_TIME});
+                    return;                                  // stop recursion, end madness!
+                }
+            }
+        }
+        if(targetID){   // so long as target id greater than being first user
+            process.nextTick(function(){topic.match(user, interest, topic.db[targetID-1].user);});
+        } else {        // If we got to first user, loop back up to imediate previous user
+            interest++; // change what is being search for to match
+            if(topic.db[userID].sub[interest]){
+                process.nextTick(function(){topic.match(user, interest, topic.db[userID-1].user);});
+            }
+        }
+    },
+    toggle: function(user){ // stop topic.get
+        var userID = topic.db.map(function(x){return x.user;}).indexOf(user); // determines index of user
+        if(userID > -1){
+            if(topic.db[userID].timer){ // given the timer was counting down to add topics
+                clearTimeout(topic.db[userID].timer);
+                topic.db[userID].timer = 0;
+            } else { topic.get(user);}         // other wise we are resubbing user to feed
+        }
+    },
+    add: function(topic){GEN_TOPICS.push(topic);}, // add new topics to be distributed
+    logout: function(user){
+        var userID = topic.db.map(function(x){return x.user;}).indexOf(user); // determines index of user
+        topic.db.splice(userID, 1); // remove this user (for persistence stop trying to match)
+    },
+}
+
 // socket.io logic
 var sock = { // depends on match
     io: require('socket.io'),
-    use: function(server){sock.io = sock.io(server);},
-    listen: function (){
+    listen: function (server){
+        sock.io = sock.io(server);
         sock.io.on('connection', function(socket){
-            console.log(socket.id);  // demonstrate socket information
-            match.add(socket.id); // put in client list and "subscibe" to new and existing topics
+            topic.feed(socket.id);
+            //console.log(socket.request.headers.cookie);  // demonstrate socket information
+            //match.add(socket.id); // put in client list and "subscibe" to new and existing topics
             // ------ Creating topics ---------
-            socket.on('create', function(txt){match.updateTo(socket.id, txt);});
-            socket.on("post", function(){match.post(socket.id);});
-            socket.on('selectTopic', function(id){
+            socket.on('create', function(txt){
+                // topic.add(txt); // make sure topic add is on post, not in real time
+                // match.updateTo(socket.id, txt);
+            });
+            socket.on("post", function(){
+                // match.post(socket.id);
+            });
+            socket.on('selectTopic', function(id){ // will be called by both clients at zero time out
                 if(sock.io.sockets.connected[id]){
                     sock.io.to(id).emit('chatInit', socket.id);
-                    match.rm(socket.id); // remove id of this user from match
-                    match.rm(id);        // remove id user being matched with
-                }
+                    topic.toggle(socket.id);
+                    // match.rm(socket.id); // remove id of this user from match
+                    // match.rm(id);        // remove id user being matched with
+                } // reject chat, NEED TO HANDLE GRACEFULLY
             });
             // -- Real time chat --
             socket.on('chat', function(rtt){sock.io.to(rtt.id).emit('toMe', {text: rtt.text, row: 0});});
             socket.on('toOther', function(id){sock.io.to(id).emit('yourTurn');}); // signal turn
             socket.on('endChat', function(id){
-                match.add(socket.id);           // add this user back to topic creating and getting pool
-                match.add(id);                  // also add the user they are taling with
+                // match.add(socket.id);           // add this user back to topic creating and getting pool
+                // match.add(id);                  // also add the user they are taling with
+                topic.toggle(id);
+                topic.toggle(socket.id);
                 sock.io.to(id).emit('endChat'); // tell the user they are talking with that the chat is over
             });
             // ----- disconnect event -------
-            socket.on('disconnect', function(){match.rm(socket.id);});
+            socket.on('disconnect', function(){
+                // match.rm(socket.id);
+                topic.logout(socket.id);
+            });
         });
     },
+    emitTo: function(command, user, data){sock.io.to(user).emit(command, data);},
 }
 
 var mongo = { // depends on: mongoose
@@ -119,8 +199,12 @@ var mongo = { // depends on: mongoose
             id: ObjectId,
             email: {type: String, required: '{PATH} is required', unique: true},
             password: {type: String, required: '{PATH} is required'},
+            subscribed: [], // topic ids user is subscribed to
             //acountType: {type: String},
         }));
+    },
+    addTopic: function(user, topic){
+        ;
     },
     signup: function(req, res){
         var user = new mongo.user({
@@ -198,10 +282,10 @@ var serve = { // depends on everything
         router.get('/login', function(req, res){res.render('login', {csrfToken: req.csrfToken()});});
         router.post('/login', mongo.login);         // handle logins
         router.get('/topic', mongo.auth('topic'));  // must be authenticated for this page
-        app.use(router);   // tell app what router to use
-        sock.use(http);    // have sockets upgrade with http sever
-        sock.listen();     // listen for socket connections
-        http.listen(3000); // listen on port 3000
+        app.use(router);                            // tell app what router to use
+        topic.action = sock.emitTo;                 // assign how topics are sent
+        sock.listen(http);                          // listen for socket connections
+        http.listen(3000);                          // listen on port 3000
     }
 }
 
