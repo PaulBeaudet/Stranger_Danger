@@ -6,9 +6,13 @@ var NUM_ENTRIES = 6; // number of dialog rows allowed in the application
 var NUM_TIMERS = NUM_ENTRIES + 1; // timer 6 is for the send button
 // call NUM_ENTRIES for send button timer
 var SEND_TIMER = NUM_ENTRIES;
+// Typing modes
+var TOPIC = 0; // users post or select topics
+var CHAT  = 1; // two users chat one on one
+var BLOCK = 2; // blocks user entry, waiting for either their topic to expire or chatting partner to finish
 
 // Methods revolving around tracking possition of row
-var edit = { // dep: rows, time, textBar, edit
+var edit = { // dep: time, textBar, $
     row: 1,
     increment: function(){ // decides with row to edit to and when the dialog needs to scoot up
         if(edit.row < NUM_ENTRIES - 2)         { edit.row++; }
@@ -36,31 +40,35 @@ var edit = { // dep: rows, time, textBar, edit
     },
     scoot: function(){
         for(var i = 2; i < NUM_ENTRIES; i++){
-            $('#dialog' + i-1).html($('#dialog' + i).html);
-            time.rs[i-1].innerHTML = time.rs[i].innerHTML;
+            $( '#dialog' + ( i - 1 ) ).html( $('#dialog' + i).html() );
+            $( '#timer' + ( i - 1 ) ).html( $('#timer' + i).html() );
         }
-        $('#dialog' + NUM_ENTRIES - 1).html('');
-        time.rs[NUM_ENTRIES - 1].innerHTML = "";
+        $( '#dialog' + (NUM_ENTRIES - 1) ).html('');
+        $( '#timer' + (NUM_ENTRIES -1) ).html('');
     }
 }
 
 // changeition handling of visual elements
-var change = { // dep: send, time, rows, textBar
+var change = { // dep: send, time, textBar
     toHome: function(){
         time.clear();
-        rows.reset();
+        for(var i = 0; i < NUM_ENTRIES; i++){                     // for every entry
+            if(i){$('#dialog' + i).html('');}                     // set dialog to be empty
+            else{$('#dialog' + i).html('Waiting for topics...');} // set a default entry for dialog 0
+            $('#button' + i).css('visibility', 'hidden');         //  hide buttons
+        }
         send.mode = TOPIC; // reset into topic mode
         info.home();       // Set hint text for topic picking mode
         edit.row = 0;      // topic can now posted to possition 0
         textBar.changeAction(send.mode); // make sure send mode is properly set before change.home called
     },
     toChat: function(data){
-        send.to = data.id;                      // set who topics are being sent to
-        time.clear();                           // clear outstanding timers
-        info.chat();                            // set informational dialog
-        edit.row = 1;                           // make sure editing starts on the correct row
+        send.to = data.id;                                    // set who topics are being sent to
+        time.clear();                                         // clear outstanding timers
+        info.chat();                                          // set informational dialog
+        edit.row = 1;                                         // make sure editing starts on the correct row
         for(var row = 0; row < NUM_ENTRIES; row++){           // remove everything that was on topic screen
-            rows.button[row].style.visibility = "hidden";     // hide buttons
+            $('#button' + row).css('visibility', 'hidden');   // hide buttons
             $('#icon' + row).removeClass('glyphicon-remove'); // reset type of icon
             $('#icon' + row).removeClass('glyphicon-plus');   // reset type of icon
             if(row){$('#dialog' + row).html('');}             // clear dialog
@@ -79,7 +87,7 @@ var change = { // dep: send, time, rows, textBar
 }
 
 // logic for recieving topics to subscribe to and matched topics
-var topic = { // dep: rows, time, $
+var topic = { // dep: time, $
     row: 0,
     pending: '',
     increment: function(){
@@ -97,45 +105,20 @@ var topic = { // dep: rows, time, $
             $('#button' + row).click(function(){sock.et.emit('sub', get.user);});
             time.countDown(row, function(){topic.done(row, 'plus')});     // Set timer on this row
         }
-        rows.setEvent(row, get.text);                                     // set visibility of button
+        $('#button' + row).css('visibility', 'visible');
+        $('#dialog' + row).html(get.text);
     },
     done: function(row, icon) {                            // action to occur on count end, removes entry
         $('#icon' + row).removeClass('glyphicon-' + icon); // reset so sub or decline can be reintroduced
-        rows.button[row].style.visibility = "hidden";      // on end hide button
+        $('#button' + row).css('visibility', 'hidden');    // on end hide button
         $('#dialog' + row).html('');                       // on end remove dialog
     },
-    start: function(row, talkingTo){            // at this juncture we will need to start the conversation
+    start: function(row, talkingTo){               // at this juncture we will need to start the conversation
         topic.pending = $('#dialog' + row).html(); // store topic dialog
         topic.done(row, 'remove');                 // remove this item from list
         sock.et.emit("selectTopic", talkingTo);    // signal which user that needs to be connected with
     }
 }
-
-// anything to do with the topic selection buttons or row data
-var rows = { // dep: document, change
-    button: [],
-    init: function() { // actions for selection of topic
-        for(var i = 0; i < NUM_ENTRIES; i++){                        // for every entry and
-            rows.button.push(document.getElementById("button" + i)); // store a button element
-        }
-    },
-    reset: function() {
-        for(var i = 0; i < NUM_ENTRIES; i++){                     // for every entry
-            if(i){$('#dialog' + i).html('');}                     // set dialog to be empty
-            else{$('#dialog' + i).html('Waiting for topics...');} // set a default entry for dialog 0
-            rows.button[i].style.visibility = "hidden";           // hide the buttons
-        }
-    },
-    setEvent: function(row, topic){
-        rows.button[row].style.visibility = "visible";
-        $('#dialog' + row).html(topic);
-    },
-}
-
-// Typing modes
-var TOPIC = 0; // users post or select topics
-var CHAT  = 1; // two users chat one on one
-var BLOCK = 2; // blocks user entry, waiting for either their topic to expire or chatting partner to finish
 
 // sending logic
 var send = { // dep: sock, change, edit, textBar
@@ -166,8 +149,8 @@ var send = { // dep: sock, change, edit, textBar
         if(send.mode === TOPIC){
             if(send.empty){
                 send.empty = false;
-                time.counter[SEND_TIMER] = WAIT_TIME - 1;  // note: Make sure post sent before timeout on other client
-                time.countDown(SEND_TIMER, send.create); // this is where breakers will start being timed
+                time.counter[SEND_TIMER] = WAIT_TIME - 1; // note: Make sure post sent before timeout on other client
+                time.countDown(SEND_TIMER, send.create);  // this is where breakers will start being timed
             }
         }else if(send.mode === CHAT){
             if(send.empty){edit.onStart(); send.empty = false;} // account for nessisary changeitions
@@ -195,72 +178,66 @@ var send = { // dep: sock, change, edit, textBar
 // -- socket handler
 var sock = {  // dep: sockets.io, topic, change, edit, send
     et: io(), // connect to server the page was served from
-    init: function (){
-        // Topic starting components
-        sock.et.on('topic', topic.get);         // grab time to live topics: timed from the getgo
+    init: function (){                         // Topic starting components
+        sock.et.on('topic', topic.get);        // grab time to live topics: timed from the getgo
         sock.et.on('chatInit', change.toChat); // someone wants to chat with us
-        // real time chat reception components
-        sock.et.on('toMe', edit.type);          // recieve Real Time Text
-        sock.et.on('yourTurn', edit.myTurn);    // signals when it is this clients turn to type
-        sock.et.on('endChat', change.toHome);     // switch back to default appearence
+                                               // real time chat reception components
+        sock.et.on('toMe', edit.type);         // recieve Real Time Text
+        sock.et.on('yourTurn', edit.myTurn);   // signals when it is this clients turn to type
+        sock.et.on('endChat', change.toHome);  // switch back to default appearence
     }
 }
 
 // informational header, this can change from screen to screen to indicate use information
 var info = {
-    mation: document.getElementById('info'),
     inProg: null,
     chat: function(){
-        info.mation.innerHTML = "Chat: Pressing done while text box empty, ends chat";
+        $('#info').html('Chat: Pressing done while text box empty, ends chat');
         info.inProg = setTimeout(function(){
-            info.mation.innerHTML = "Actions auto-complete on timeout";
+            $('#info').html('Actions auto-complete on timeout');
         }, (WAIT_TIME / 2 * 1000));
     },
     home: function(){
         if(info.inProg){clearTimeout(info.inProg);}
-        info.mation.innerHTML = "Pick or create topic";
+        $('#info').html('Subscribe to topics or wait for conversation');
     }
 }
 
 // timer logic
 var time = { // dep: document
-    rs: [],      // list of timer elements on page, build with init
     counter: [], // one exist per row, last is send timer
     inProg: [],  // IDs of timers in case clear is needed
-    countDown: function(pos, ondone){
-        if (time.counter[pos]) {
-            time.counter[pos]--;
-            time.rs[pos].innerHTML = "T-" + time.counter[pos] + " ";
-            time.inProg[pos] = setTimeout(function(){time.countDown(pos, ondone);}, 1000);
+    countDown: function(row, ondone){
+        if (time.counter[row]) {
+            time.counter[row]--;
+            $('#timer' + row).html("T-" + time.counter[row] + " ");
+            time.inProg[row] = setTimeout(function(){time.countDown(row, ondone);}, 1000);
         } else {
-            time.rs[pos].innerHTML = "";
-            time.counter[pos] = WAIT_TIME;
+            $('#timer' + row).html('');
+            time.counter[row] = WAIT_TIME;
             if(ondone){ondone();}
         }
     },
     clear: function(){
         for (var i = 0; i < NUM_TIMERS; i++){
             if(time.inProg[i]){clearTimeout(time.inProg[i]);} // deactivate active timeouts
-            time.rs[i].innerHTML = "";                        // empty timer text
+            $('#timer' + i).html('');                         // empty timer text
             time.counter[i] = WAIT_TIME;                      // reset timeouts
         }
     },
     stopSend: function(text){
         clearTimeout(time.inProg[SEND_TIMER]);
-        time.rs[SEND_TIMER].innerHTML = text;
+        $('#timer' + SEND_TIMER).html(text);
         time.counter[SEND_TIMER] = WAIT_TIME;
     },
-    init: function(){
-        for(var i = 0; i < NUM_TIMERS; i++){time.rs.push(document.getElementById('timer' + i));}
-    },
     from: function(whichRow, who){ // replaces time span elemement with perspective of user
-        time.rs[whichRow].style.visibility = "visible"; // make the element visible from within invisible button
-        time.rs[whichRow].innerHTML = who;              // which perspective its this
+        $('#timer' + whichRow).css('visibility', 'visible');
+        $('#timer' + whichRow).html(who);               // which perspective is this
     }, // Should probably be done with a seperate element but for the sake of simplicity this one is reused
 }
 
 // Bottom of page text bar footer object
-var textBar = { // dep: document, send
+var textBar = { // dep: document, send, $
     entry: document.getElementById('textEntry'),
     button: document.getElementById('sendButton'),
     btnTxt: document.getElementById('sendText'),
@@ -271,30 +248,20 @@ var textBar = { // dep: document, send
     },
     changeAction: function(mode){
         if(mode === TOPIC){
-            textBar.btnTxt.innerHTML = "Make Topic ";
-            textBar.entry.value = "";
+            $('#sendText').html('Make Topic ');
+            $('#textEntry').val('');
         } else if ( mode === CHAT ){
-            textBar.btnTxt.innerHTML = "Done ";
-            textBar.entry.value = "";
+            $('#sendText').html('Done');
+            $('#textEntry').val('');
         } else if ( mode === BLOCK){
-            textBar.btnTxt.innerHTML = "Wait ";
+            $('#sendText').html('Wait ');
         }
     }
 }
 
-// sets up application on page load
-var app = { // dep: rows, time, change, textBar, sock, document
-    // one call to methods used to start the application
-    init: function () {
-        document.getElementById("app").onload = function () {
-            rows.init();     // setup row elements !do this first!
-            time.init();     // set up timers
-            change.toHome();   // default appearance
-            textBar.init();  // Set-up bottom text bar
-            sock.init();     // connect socket to server
-        }
-    }
-};
-
-// -- Global execution --
-app.init(); // start the app
+// -- Global execution -- Set up application on ready
+$(document).ready(function(){
+    change.toHome(); // default appearance
+    textBar.init();  // Set-up bottom text bar
+    sock.init();     // connect socket to server
+});
