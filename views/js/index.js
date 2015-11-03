@@ -130,7 +130,7 @@ var send = { // dep: sock, change, edit, textBar
     },
     passOn: function(){
         if(send.mode === TOPIC){
-            send.startTTL(); // start ttl timer, shows time topics have to live in send timer
+            send.create(); // start ttl timer, shows time topics have to live in send timer
         } else if (send.mode === CHAT){
             if(send.empty){
                 sock.et.emit('endChat', send.to);
@@ -237,15 +237,7 @@ var time = { // dep: document
 }
 
 // Bottom of page text bar footer object
-var textBar = { // dep: document, send, $
-    entry: document.getElementById('textEntry'),
-    button: document.getElementById('sendButton'),
-    btnTxt: document.getElementById('sendText'),
-    init: function(){
-        textBar.entry.onkeydown = send.nonPrint; // deal with non-printable input
-        textBar.entry.oninput = send.input;      // block when not user's turn
-        textBar.button.onclick = send.passOn;
-    },
+var textBar = { // dep: $
     changeAction: function(mode){
         if(mode === TOPIC){
             $('#sendText').html('Make Topic ');
@@ -259,9 +251,11 @@ var textBar = { // dep: document, send, $
     }
 }
 
-// -- Global execution -- Set up application on ready
+// -- Global execution -- Set up application on DOM ready
 $(document).ready(function(){
-    change.toHome(); // default appearance
-    textBar.init();  // Set-up bottom text bar
-    sock.init();     // connect socket to server
+    change.toHome();                                           // default appearance
+    $('#textEntry').keydown(send.nonPrint);                    // capture special key like enter
+    $('#sendButton').click(send.passOn);                       // provide a button click action
+    document.getElementById('textEntry').oninput = send.input; // listen for input event
+    sock.init();                                               // listen for socket events
 });
