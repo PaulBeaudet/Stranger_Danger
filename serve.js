@@ -107,7 +107,7 @@ var sock = { // depends on match
             topic.feed(socket.id);
             console.log(socket.id + ' connected');
             // ------ Creating topics ---------
-            socket.on('create', function(txt){});
+            socket.on('create', topic.add);
             socket.on('sub', function(topicID){
                 var userID = topic.db.map(function(x){return x.user;}).indexOf(socket.id);
                 topic.db[userID].sub.push(topicID);

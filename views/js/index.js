@@ -154,22 +154,22 @@ var send = { // dep: sock, change, edit, textBar
             }
         }else if(send.mode === CHAT){
             if(send.empty){edit.onStart(); send.empty = false;} // account for nessisary changeitions
-            edit.type({text: textBar.entry.value, row: 0});     // print on own screen
-            sock.et.emit("chat", {text: textBar.entry.value, id: send.to}); // send to other user
+            edit.type({text: $('#textEntry').val(), row: 0});     // print on own screen
+            sock.et.emit("chat", {text: $('#textEntry').val(), id: send.to}); // send to other user
         }
         else if(send.mode === BLOCK){ // block more input from happening, leaving last sent message in box
-            textBar.entry.value = textBar.entry.value.substring(0, textBar.entry.value.length -1);
+            $('#textEntry').val('');
         }
     },
     create: function(){ // called when topic composition is complete
         sock.et.emit('create', $('#textEntry').val()); // Signal to the server that composition of topic is done
-        time.stopSend(WAIT_TIME);     // in case this was called by passOn
-        send.mode = BLOCK;            // block input till time to live is over
-        textBar.changeAction(BLOCK);  // display notice of block
+        time.stopSend(WAIT_TIME);        // in case this was called by passOn
+        send.mode = BLOCK;               // block input till time to live is over
+        textBar.changeAction(BLOCK);     // display notice of block
         time.countDown(SEND_TIMER, function(){
-            time.stopSend("");        // reset timer
-            send.empty = true;        // text is now empty
-            send.mode = TOPIC;        // set so topics can be made again
+            time.stopSend("");           // reset timer
+            send.empty = true;           // text is now empty
+            send.mode = TOPIC;           // set so topics can be made again
             textBar.changeAction(TOPIC); // display notice that topics can be made again
         });
     }
