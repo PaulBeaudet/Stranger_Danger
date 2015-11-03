@@ -102,13 +102,17 @@ var topic = { // dep: time, $
             time.countDown(row, function(){topic.start(row, get.user);}); // Set timer on this row
         } else {                                                          // given subbable
             $('#icon' + row).addClass('glyphicon-plus');                  // add the plus icon
-            $('#button' + row).click(function(){sock.et.emit('sub', get.user);});
+            $('#button' + row).click(function(){
+                sock.et.emit('sub', get.user);
+                topic.done(row, 'plus');
+            });
             time.countDown(row, function(){topic.done(row, 'plus')});     // Set timer on this row
         }
         $('#button' + row).css('visibility', 'visible');
         $('#dialog' + row).html(get.text);
     },
     done: function(row, icon) {                            // action to occur on count end, removes entry
+        clearTimeout(time.inProg[row]);                    // deactivate timeout if active
         $('#icon' + row).removeClass('glyphicon-' + icon); // reset so sub or decline can be reintroduced
         $('#button' + row).css('visibility', 'hidden');    // on end hide button
         $('#dialog' + row).html('');                       // on end remove dialog
@@ -126,7 +130,7 @@ var send = { // dep: sock, change, edit, textBar
     mode: 0,
     to: '', // potential user id
     nonPrint: function(event){ // account for pressing the enter key
-        if(send.mode === TOPIC || send.mode === CHAT){if(event.which == 13){send.passOn();}}
+        if(send.mode === TOPIC || send.mode === CHAT){if(event.which === 13){send.passOn();}}
     },
     passOn: function(){
         if(send.mode === TOPIC){
@@ -156,10 +160,8 @@ var send = { // dep: sock, change, edit, textBar
             if(send.empty){edit.onStart(); send.empty = false;} // account for nessisary changeitions
             edit.type({text: $('#textEntry').val(), row: 0});     // print on own screen
             sock.et.emit("chat", {text: $('#textEntry').val(), id: send.to}); // send to other user
-        }
-        else if(send.mode === BLOCK){ // block more input from happening, leaving last sent message in box
-            $('#textEntry').val('');
-        }
+        } // block more input from happening, leaving last sent message in box
+        else if(send.mode === BLOCK){ $('#textEntry').val(''); }
     },
     create: function(){ // called when topic composition is complete
         sock.et.emit('create', $('#textEntry').val()); // Signal to the server that composition of topic is done
