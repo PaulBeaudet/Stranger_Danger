@@ -1,10 +1,10 @@
 // serve.js ~ Copyright 2015 Paul Beaudet
 // This serves a test application that lets people talk to strangers
-var WAIT_TIME  = 30;  // time to wait for talking turn
-var NUM_ENTRIES = 6;  // number of dialog rows allowed in the application
-var MINIMUM_TTL = 5;  // minimum amound of seconds that is applicable for a gettible topic
-var FREQUENCY = 9000; // Time it takes to fill next row
-var READ_TIME = WAIT_TIME * 1000 / NUM_ENTRIES; // ms to wait for a user to read a topic
+const WAIT_TIME  = 30;  // time to wait for talking turn
+const NUM_ENTRIES = 6;  // number of dialog rows allowed in the application
+const MINIMUM_TTL = 5;  // minimum amound of seconds that is applicable for a gettible topic
+const FREQUENCY = 9000; // Time it takes to fill next row
+const READ_TIME = WAIT_TIME * 1000 / NUM_ENTRIES; // ms to wait for a user to read a topic
 // in this way the server will never send out more topics than a client can handle
 // because the first entry should expire before the NUM_ENTRIES + 1(th) is sent leaving a possible spot to fill
 var GEN_TOPICS = [
@@ -98,7 +98,7 @@ var topic = {
 }
 
 // socket.io logic
-var sock = { // depends on match
+var sock = { // depends on topic
     io: require('socket.io'),
     pairs: [],
     listen: function (server){
@@ -106,6 +106,9 @@ var sock = { // depends on match
         sock.io.on('connection', function(socket){
             topic.feed(socket.id);
             console.log(socket.id + ' connected');
+            var cookieCrums = socket.request.headers.cookie.split('=');
+            console.log(cookieCrums[cookieCrums.length - 1]);
+            cookie.eat(cookieCrums[cookieCrums.length - 1]);
             // ------ Creating topics ---------
             socket.on('create', topic.add);
             socket.on('sub', function(topicID){
@@ -165,9 +168,7 @@ var mongo = { // depends on: mongoose
             //acountType: {type: String},
         }));
     },
-    addTopic: function (user, topic){
-        ;
-    },
+    addTopic: function (user, topic){;},
     signup: function(req, res){
         var user = new mongo.user({
             email: req.body.email,
@@ -206,15 +207,18 @@ var mongo = { // depends on: mongoose
 
 var cookie = { // depends on client-sessions and mongo
     session: require('client-sessions'),
-    meWant: function (){
-        return cookie.session({
-            cookieName: 'session',
-            secret: process.env.SESSION_SECRET,
-            duration: 8 * 60 * 60 * 1000,  // cookie times out in 8 hours
-            activeDuration: 5 * 60 * 1000, // activity extends durration 5 minutes
-            httpOnly: true,                // block browser access to cookies
-            //secure: true,                // only allow cookies over HTTPS
-        });
+    ingredients: {
+        cookieName: 'session',
+        secret: process.env.SESSION_SECRET,
+        duration: 8 * 60 * 60 * 1000,  // cookie times out in 8 hours
+        activeDuration: 5 * 60 * 1000, // activity extends durration 5 minutes
+        httpOnly: true,                // block browser access to cookies... defaults to this anyhow
+        //secure: true,                // only allow cookies over HTTPS
+    },
+    meWant: function (){return cookie.session(cookie.ingredients);},
+    eat: function (content){
+        var result = cookie.session.util.decode(cookie.ingredients, content);
+        console.log(result);
     },
 }
 
