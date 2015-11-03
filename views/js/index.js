@@ -88,15 +88,16 @@ var change = { // dep: send, time, textBar
 
 // logic for recieving topics to subscribe to and matched topics
 var topic = { // dep: time, $
-    row: 0,
     pending: '',
-    increment: function(){
-        topic.row++;
-        if(topic.row === NUM_ENTRIES){topic.row = 0;}
+    firstEmpty: function(){
+        for( var i=0; i < NUM_ENTRIES; i++){
+            if($('#icon' + i).hasClass('glyphicon-plus') || $('#icon' + i).hasClass('glyphicon-remove') ){;}
+            else{return i;} // given nothing in this row signal it is free
+        } // if the rows have been exhusted write to first row
+        return 0;
     },
     get: function(get){
-        var row = topic.row;
-        topic.increment();
+        var row = topic.firstEmpty();
         if($.type(get.user) === 'string'){                // if this is a pending conversation (got a user id)
             $('#icon' + row).addClass('glyphicon-remove');                // add "decline" icon
             time.countDown(row, function(){topic.start(row, get.user);}); // Set timer on this row
