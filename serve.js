@@ -59,8 +59,8 @@ var topic = {
                 for (var i = 0; topic.db[targetID].sub[i] !== undefined; i++){ // for every availible topic prospect has
                     console.log('for ' + topic.db[targetID].sub[i]);
                     if(topic.db[targetID].sub[i] === topicIndex){              // if their topic matches up with ours
-                        var found = topic.db[targetID].user;                 // who matched?
-                        console.log(found + ' maches!');
+                        var found = topic.db[targetID].user;                   // who matched?
+                        console.log(topic.db[targetID].unique + ' maches!');
                         topic.db[userID].onInterest++;
                         topic.action('topic', user, {user:found, text: GEN_TOPICS[topicIndex], code:topicIndex});
                         topic.action('topic', found, {user:user, text: GEN_TOPICS[topicIndex], code:topicIndex});
@@ -69,8 +69,8 @@ var topic = {
                 }
             } else { console.log("no timer");}
         } else { return;} // given no topic we have nothing further todo
-        if(targetID){    // so long as target id greater than being first user
-            console.log('next target');
+        if(targetID){     // so long as target id greater than being first user
+            console.log('trying ' + topic.db[targetID - 1].unique);
             process.nextTick(function (){topic.match(user, topic.db[targetID-1].user);});
         } else {        // If we got to first user, loop back up to imediate previous user
             topic.db[userID].onInterest++;                         // change what is being search for to match
@@ -99,22 +99,43 @@ var topic = {
 
 var reaction = { // depends on topic
     onConnect: function(socket){ // returns unique id to hold in closure for socket.on events
-        console.log(socket.id + ' connected');
         var dbID = 0;
         if(socket.request.headers.cookie){ // if the cookie exist
             var cookieCrums = socket.request.headers.cookie.split('=');
             dbID = cookie.email(cookieCrums[cookieCrums.length - 1]);
-            console.log(dbID);
+            console.log(dbID + ' connected');
             topic.feed({socket: socket.id, dbID: dbID});
-        } else {console.log('expired connection');} // no cookie case
+        }
         return dbID;
     },
+    toSub: function(id, topicID, unique){
+        var userID = topic.db.map(function(db){return db.user;}).indexOf(id);
+        topic.db[userID].sub.push(topicID);
+        console.log(unique + ' subbed to ' + topic.db[userID].sub);
+    },
+    readyToChat: [],
+    timeToTalk: function(socketID, matchID){          // logic that determines who responds first
+        var first = true;
+        for(var i = 0; reaction.readyToChat[i]; i++){ // for all ready to chat
+            if(reaction.readyToChat[i] === matchID){  // did this socket's match check in yet
+                first = false;                        // yes? than that person got here first
+                reaction.readyToChat.splice(i, 1);    // they are about to talk with us remove that person from list
+            }
+        }
+        if(first){ // given this sockets match has yet to check in, this socket is first
+            reaction.readyToChat.push(socketID); // check in
+            return false;                        // not ready to chat
+        } else {
+            topic.toggle(matchID);               // stop feed
+            topic.toggle(socketID);
+            return true;                         // ready to chat
+        }
+    }
 }
 
 // socket.io logic
-var sock = { // depends on topic
+var sock = { // depends on socket.io, reaction, and topic
     io: require('socket.io'),
-    pairs: [],
     listen: function (server){
         sock.io = sock.io(server);
         sock.io.on('connection', function(socket){
@@ -122,28 +143,14 @@ var sock = { // depends on topic
             if(connection){
                 // ------ Creating topics ---------
                 socket.on('create', topic.add);
-                socket.on('sub', function(topicID){
-                    var userID = topic.db.map(function(x){return x.user;}).indexOf(socket.id);
-                    topic.db[userID].sub.push(topicID);
-                    console.log(socket.id + ' subbed to ' + topic.db[userID].sub);
-                });
-                socket.on('selectTopic', function(id){ // will be called by both clients at zero time out
-                    if(sock.io.sockets.connected[id]){
-                        var first = true;
-                        for(var i = 0; sock.pairs[i]; i++){ // for all current pending pairings
-                            if(sock.pairs[i] === id){       // if the pairing is equal to our match
-                                first = false;              // than other person got here first
-                                sock.pairs.splice(i, 1);    // they are about to talk remove that person from list
-                            }
+                socket.on('sub', function(topicID){reaction.toSub(socket.id, topicID, connection);});
+                socket.on('selectTopic', function(matchID){ // will be called by both clients at zero time out
+                    if(sock.io.sockets.connected[matchID]){
+                        if(reaction.timeToTalk(socket.id, matchID)){
+                            sock.io.to(matchID).emit('chatInit', {id: socket.id, first: true});
+                            sock.io.to(socket.id).emit('chatInit', {id: matchID, first: false});
                         }
-                        if(first){ sock.pairs.push(socket.id);
-                        } else {
-                            topic.toggle(socket.id);
-                            topic.toggle(id);
-                            sock.io.to(socket.id).emit('chatInit', {id: id, first: false});
-                            sock.io.to(id).emit('chatInit', {id: socket.id, first: true});
-                        }
-                    } else { console.log('rejected chat - not connected');}
+                    } else { console.log('rejected chat' + matchID + 'not connected');}
                 });
                 // -- Real time chat --
                 socket.on('chat', function (rtt){sock.io.to(rtt.id).emit('toMe', {text: rtt.text, row: 0});});
@@ -155,12 +162,12 @@ var sock = { // depends on topic
                 });
                 // ----- disconnect event -------
                 socket.on('disconnect', function (){
-                    console.log(socket.id + ' disconnected');
+                    console.log(connection + ' disconnected');
                     topic.logout(socket.id);
                 });
             } else { // cookie expiration event
                 console.log('me want cookie!');
-                sock.io.to(socket.id).emit('redirect', 'login'); // point the client to login page to get a valid cookie
+                sock.io.to(socket.id).emit('redirect', '/login'); // point the client to login page to get a valid cookie
             }
         });
     },
@@ -183,7 +190,6 @@ var mongo = { // depends on: mongoose
             acountType: {type: String},
         }));
     },
-    addTopic: function (user, topic){;},
     signup: function(req, res){
         var user = new mongo.user({
             email: req.body.email,
