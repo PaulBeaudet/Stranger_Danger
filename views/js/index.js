@@ -115,6 +115,7 @@ var topic = { // dep: time, $
     done: function(row, icon) {                            // action to occur on count end, removes entry
         clearTimeout(time.inProg[row]);                    // deactivate timeout if active
         $('#icon' + row).removeClass('glyphicon-' + icon); // reset so sub or decline can be reintroduced
+        $('#button' + row).off('click');                   // remove click event
         $('#button' + row).css('visibility', 'hidden');    // on end hide button
         $('#dialog' + row).html('');                       // on end remove dialog
     },
