@@ -19,10 +19,10 @@ var GEN_TOPICS = [
 // distribute topics
 var topic = {
     action: function(command, user, data){console.log(command + '-' + user + '-' + data);}, // replace with real command
-    db: [], // array of user objects "temporary till persistence understanding"
-    feed: function ( user ){                                          // set up feed to topics
-        topic.db.push({user:user, sub:[], timer: 0, lookedAt: 0, onInterest: 0}); // add a new user
-        topic.get(user, true);                                     // try again now that this user has been made
+    db: [],                    // array of user objects "temporary till persistence understanding"
+    feed: function ( user ){   // add a new user and set up feed to topics
+        topic.db.push({user:user.socket, unique: user.dbID, sub:[], timer: 0, lookedAt: 0, onInterest: 0});
+        topic.get(user.socket, true); // try again now that this user has been made
     },
     get: function(user, flipbit){ // starts search for topics (booth to sub and to have)
         var userID = topic.db.map(function(x){return x.user;}).indexOf(user); // determines index of user
@@ -33,7 +33,7 @@ var topic = {
                 topic.db[userID].lookedAt++;           // increment the number of topics that have been looked at
             } else if (userID && topic.db.length > 1){
                 // find a match if user is one other than first: question effort
-                console.log(user + " searching");
+                console.log(topic.db[userID].unique + " searching");
                 process.nextTick(function(){topic.match(user, 0);});
             }
             topic.db[userID].timer = setTimeout(function(){topic.get(user, !flipbit)}, FREQUENCY);
@@ -68,14 +68,14 @@ var topic = {
                     }
                 }
             } else { console.log("no timer");}
-        } else { console.log('no topic'); return;} // given no topic we have nothing further todo
+        } else { return;} // given no topic we have nothing further todo
         if(targetID){    // so long as target id greater than being first user
             console.log('next target');
             process.nextTick(function (){topic.match(user, topic.db[targetID-1].user);});
         } else {        // If we got to first user, loop back up to imediate previous user
             topic.db[userID].onInterest++;                         // change what is being search for to match
             if(topic.db[userID].sub[topic.db[userID].onInterest]){ // if this user has an interest in this slot
-                console.log(user + " on " + topic.db[userID].onInterest);
+                console.log(topic.db[userID].unique + " on " + topic.db[userID].onInterest);
                 process.nextTick(function(){topic.match(user, topic.db[userID-1].user);});
             } else { console.log('outa interest'); }
         }
@@ -97,6 +97,20 @@ var topic = {
     subscribe: function(topic, user){}
 }
 
+var reaction = { // depends on topic
+    onConnect: function(socket){ // returns unique id to hold in closure for socket.on events
+        console.log(socket.id + ' connected');
+        var dbID = 0;
+        if(socket.request.headers.cookie){ // if the cookie exist
+            var cookieCrums = socket.request.headers.cookie.split('=');
+            dbID = cookie.email(cookieCrums[cookieCrums.length - 1]);
+            console.log(dbID);
+            topic.feed({socket: socket.id, dbID: dbID});
+        } else {console.log('expired connection');} // no cookie case
+        return dbID;
+    },
+}
+
 // socket.io logic
 var sock = { // depends on topic
     io: require('socket.io'),
@@ -104,49 +118,50 @@ var sock = { // depends on topic
     listen: function (server){
         sock.io = sock.io(server);
         sock.io.on('connection', function(socket){
-            topic.feed(socket.id);
-            console.log(socket.id + ' connected');
-            var cookieCrums = socket.request.headers.cookie.split('=');
-            console.log(cookieCrums[cookieCrums.length - 1]);
-            cookie.eat(cookieCrums[cookieCrums.length - 1]);
-            // ------ Creating topics ---------
-            socket.on('create', topic.add);
-            socket.on('sub', function(topicID){
-                var userID = topic.db.map(function(x){return x.user;}).indexOf(socket.id);
-                topic.db[userID].sub.push(topicID);
-                console.log(socket.id + ' subbed to ' + topic.db[userID].sub);
-            });
-            socket.on('selectTopic', function(id){ // will be called by both clients at zero time out
-                if(sock.io.sockets.connected[id]){
-                    var first = true;
-                    for(var i = 0; sock.pairs[i]; i++){ // for all current pending pairings
-                        if(sock.pairs[i] === id){       // if the pairing is equal to our match
-                            first = false;              // than other person got here first
-                            sock.pairs.splice(i, 1);    // they are about to talk remove that person from list
+            var connection = reaction.onConnect(socket); // connection is a unique database key for this user
+            if(connection){
+                // ------ Creating topics ---------
+                socket.on('create', topic.add);
+                socket.on('sub', function(topicID){
+                    var userID = topic.db.map(function(x){return x.user;}).indexOf(socket.id);
+                    topic.db[userID].sub.push(topicID);
+                    console.log(socket.id + ' subbed to ' + topic.db[userID].sub);
+                });
+                socket.on('selectTopic', function(id){ // will be called by both clients at zero time out
+                    if(sock.io.sockets.connected[id]){
+                        var first = true;
+                        for(var i = 0; sock.pairs[i]; i++){ // for all current pending pairings
+                            if(sock.pairs[i] === id){       // if the pairing is equal to our match
+                                first = false;              // than other person got here first
+                                sock.pairs.splice(i, 1);    // they are about to talk remove that person from list
+                            }
                         }
-                    }
-                    if(first){ sock.pairs.push(socket.id);
-                    } else {
-                        topic.toggle(socket.id);
-                        topic.toggle(id);
-                        sock.io.to(socket.id).emit('chatInit', {id: id, first: false});
-                        sock.io.to(id).emit('chatInit', {id: socket.id, first: true});
-                    }
-                } else { console.log('rejected chat - not connected');}
-            });
-            // -- Real time chat --
-            socket.on('chat', function (rtt){sock.io.to(rtt.id).emit('toMe', {text: rtt.text, row: 0});});
-            socket.on('toOther', function (id){sock.io.to(id).emit('yourTurn');}); // signal turn
-            socket.on('endChat', function (id){
-                topic.toggle(id);
-                topic.toggle(socket.id);
-                sock.io.to(id).emit('endChat'); // tell the user they are talking with that the chat is over
-            });
-            // ----- disconnect event -------
-            socket.on('disconnect', function (){
-                console.log(socket.id + ' disconnected');
-                topic.logout(socket.id);
-            });
+                        if(first){ sock.pairs.push(socket.id);
+                        } else {
+                            topic.toggle(socket.id);
+                            topic.toggle(id);
+                            sock.io.to(socket.id).emit('chatInit', {id: id, first: false});
+                            sock.io.to(id).emit('chatInit', {id: socket.id, first: true});
+                        }
+                    } else { console.log('rejected chat - not connected');}
+                });
+                // -- Real time chat --
+                socket.on('chat', function (rtt){sock.io.to(rtt.id).emit('toMe', {text: rtt.text, row: 0});});
+                socket.on('toOther', function (id){sock.io.to(id).emit('yourTurn');}); // signal turn
+                socket.on('endChat', function (id){
+                    topic.toggle(id);
+                    topic.toggle(socket.id);
+                    sock.io.to(id).emit('endChat'); // tell the user they are talking with that the chat is over
+                });
+                // ----- disconnect event -------
+                socket.on('disconnect', function (){
+                    console.log(socket.id + ' disconnected');
+                    topic.logout(socket.id);
+                });
+            } else { // cookie expiration event
+                console.log('me want cookie!');
+                sock.io.to(socket.id).emit('redirect', 'login'); // point the client to login page to get a valid cookie
+            }
         });
     },
     emitTo: function(command, user, data){sock.io.to(user).emit(command, data);},
@@ -165,7 +180,7 @@ var mongo = { // depends on: mongoose
             email: {type: String, required: '{PATH} is required', unique: true},
             password: {type: String, required: '{PATH} is required'},
             subscribed: [], // topic ids user is subscribed to
-            //acountType: {type: String},
+            acountType: {type: String},
         }));
     },
     addTopic: function (user, topic){;},
@@ -216,9 +231,10 @@ var cookie = { // depends on client-sessions and mongo
         //secure: true,                // only allow cookies over HTTPS
     },
     meWant: function (){return cookie.session(cookie.ingredients);},
-    eat: function (content){
+    email: function (content){
         var result = cookie.session.util.decode(cookie.ingredients, content);
-        console.log(result);
+        result = result.content.user.email;
+        return result;
     },
 }
 

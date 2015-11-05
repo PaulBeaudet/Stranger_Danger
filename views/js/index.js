@@ -188,6 +188,8 @@ var sock = {  // dep: sockets.io, topic, change, edit, send
         sock.et.on('toMe', edit.type);         // recieve Real Time Text
         sock.et.on('yourTurn', edit.myTurn);   // signals when it is this clients turn to type
         sock.et.on('endChat', change.toHome);  // switch back to default appearence
+
+        sock.et.on('redirect', window.location.replace); // redirect to desired page
     }
 }
 
