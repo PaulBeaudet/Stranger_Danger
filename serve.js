@@ -24,6 +24,7 @@ var topic = {
         topic.db.push({user:user.socket, unique: user.dbID, sub:[], timer: 0, lookedAt: 0, onInterest: 0});
         topic.get(user.socket, true); // try again now that this user has been made
     },
+
     get: function(user, flipbit){ // starts search for topics (booth to sub and to have)
         var userID = topic.db.map(function(x){return x.user;}).indexOf(user); // determines index of user
         if(userID > -1){
@@ -39,6 +40,7 @@ var topic = {
             topic.db[userID].timer = setTimeout(function(){topic.get(user, !flipbit)}, FREQUENCY);
         }
     },
+
     match: function ( user, targetMatch ){ // find a user with a the same topic
         var userID = topic.db.map(function(x){return x.user;}).indexOf(user); // determines index of user
         if(userID && topic.db.length > 1){        // Question our own existence and whether its worth the effort
@@ -51,16 +53,15 @@ var topic = {
             } else { topic.search(user, userID, userID - 1); } // starting search
         }
     },
+
     search: function ( user, userID, targetID ){  // BLOCKING, Focus is search one topic per prospect
         var topicIndex = topic.db[userID].sub[topic.db[userID].onInterest]; // adress key of interest in question
         if(topicIndex !== undefined){
             if(topic.db[targetID].timer){           // So long as this target is also looking
-                console.log('target match=' + topicIndex);
                 for (var i = 0; topic.db[targetID].sub[i] !== undefined; i++){ // for every availible topic prospect has
-                    console.log('for ' + topic.db[targetID].sub[i]);
                     if(topic.db[targetID].sub[i] === topicIndex){              // if their topic matches up with ours
                         var found = topic.db[targetID].user;                   // who matched?
-                        console.log(topic.db[targetID].unique + ' maches!');
+                        console.log(topic.db[targetID].unique + ' matches!');
                         topic.db[userID].onInterest++;
                         topic.action('topic', user, {user:found, text: GEN_TOPICS[topicIndex], code:topicIndex});
                         topic.action('topic', found, {user:user, text: GEN_TOPICS[topicIndex], code:topicIndex});
@@ -80,6 +81,7 @@ var topic = {
             } else { console.log('outa interest'); }
         }
     },
+
     toggle: function ( user ){ // stop topic.get
         var userID = topic.db.map(function (x){return x.user;}).indexOf(user); // determines index of user
         if(userID > -1){
@@ -89,12 +91,11 @@ var topic = {
             } else { topic.get(user);}         // other wise we are resubbing user to feed
         }
     },
-    add: function ( topic ){GEN_TOPICS.push(topic);}, // add new topics to be distributed
+
     logout: function (user){
         var userID = topic.db.map(function (x){return x.user;}).indexOf(user); // determines index of user
         topic.db.splice(userID, 1); // remove this user (for persistence stop trying to match)
     },
-    subscribe: function(topic, user){}
 }
 
 var reaction = { // depends on topic
@@ -104,7 +105,7 @@ var reaction = { // depends on topic
             var cookieCrums = socket.request.headers.cookie.split('=');
             dbID = cookie.email(cookieCrums[cookieCrums.length - 1]);
             console.log(dbID + ' connected');
-            topic.feed({socket: socket.id, dbID: dbID});
+            if(dbID){topic.feed({socket: socket.id, dbID: dbID});}
         }
         return dbID;
     },
@@ -142,7 +143,11 @@ var sock = { // depends on socket.io, reaction, and topic
             var connection = reaction.onConnect(socket); // connection is a unique database key for this user
             if(connection){
                 // ------ Creating topics ---------
-                socket.on('create', topic.add);
+                socket.on('create', function(text){
+                    console.log('adding topic: ' + text)
+                    GEN_TOPICS.push(text);
+                    mongo.addTopic(text);
+                }); // push to gen topic list
                 socket.on('sub', function(topicID){reaction.toSub(socket.id, topicID, connection);});
                 socket.on('selectTopic', function(matchID){ // will be called by both clients at zero time out
                     if(sock.io.sockets.connected[matchID]){
@@ -179,6 +184,7 @@ var mongo = { // depends on: mongoose
     db: require('mongoose'),
     hash: require('bcryptjs'),
     user: null,
+    topic: null,
     connect: function (){
         mongo.db.connect(mongo.SEVER);
         var Schema = mongo.db.Schema; var ObjectId = Schema.ObjectId;
@@ -189,6 +195,20 @@ var mongo = { // depends on: mongoose
             subscribed: [], // topic ids user is subscribed to
             acountType: {type: String},
         }));
+        mongo.topic = mongo.db.model('topic', new Schema({
+            id: ObjectId,
+            index: {type: Number, unique: true},
+            text: {type: String, unique: true}
+        }));
+    },
+    addTopic: function(text){
+        var topic = new mongo.topic({text: text});
+        mongo.topic.count().exec(function(err, count){
+            topic.index = count;
+            topic.save(function(err){
+                if(err){console.log(err);}
+            });
+        });
     },
     signup: function(req, res){
         var user = new mongo.user({
@@ -239,7 +259,7 @@ var cookie = { // depends on client-sessions and mongo
     meWant: function (){return cookie.session(cookie.ingredients);},
     email: function (content){
         var result = cookie.session.util.decode(cookie.ingredients, content);
-        result = result.content.user.email;
+        if(result){result = result.content.user.email;}
         return result;
     },
 }
