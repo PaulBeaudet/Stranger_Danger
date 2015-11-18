@@ -8,9 +8,9 @@ const READ_TIME = WAIT_TIME * 1000 / NUM_ENTRIES; // ms to wait for a user to re
 // in this way the server will never send out more topics than a client can handle
 // because the first entry should expire before the NUM_ENTRIES + 1(th) is sent leaving a possible spot to fill
 var GEN_TOPICS = [
-    "What is a personal passion project you are working on?",
+    "What is a personal project you are working on?",
     "what do you do for a living?",
-    "vi or emacs?",
+    "Manchester NH",
     "Star Wars or Start Trek?",
     "Where is the most exciting place you have been to?",
     "How are you going to change the world?"
@@ -19,7 +19,7 @@ var GEN_TOPICS = [
 // distribute topics
 var topic = {
     action: function(command, user, data){console.log(command + '-' + user + '-' + data);}, // replace with real command
-    db: [],                    // array of user objects "temporary till persistence understanding"
+    db: [],                    // array of online users
     feed: function ( user ){   // add a new user and set up feed to topics
         topic.db.push({user:user.socket, unique: user.dbID, sub:[], timer: 0, lookedAt: 0, onInterest: 0});
         topic.get(user.socket, true); // try again now that this user has been made
@@ -131,7 +131,12 @@ var reaction = { // depends on topic
             topic.toggle(socketID);
             return true;                         // ready to chat
         }
-    }
+    },
+    onCreate: function(text){
+        console.log('adding topic: ' + text)
+        GEN_TOPICS.push(text);
+        mongo.addTopic(text);
+    },
 }
 
 // socket.io logic
@@ -143,11 +148,7 @@ var sock = { // depends on socket.io, reaction, and topic
             var connection = reaction.onConnect(socket); // connection is a unique database key for this user
             if(connection){
                 // ------ Creating topics ---------
-                socket.on('create', function(text){
-                    console.log('adding topic: ' + text)
-                    GEN_TOPICS.push(text);
-                    mongo.addTopic(text);
-                }); // push to gen topic list
+                socket.on('create', reaction.onCreate);
                 socket.on('sub', function(topicID){reaction.toSub(socket.id, topicID, connection);});
                 socket.on('selectTopic', function(matchID){ // will be called by both clients at zero time out
                     if(sock.io.sockets.connected[matchID]){
