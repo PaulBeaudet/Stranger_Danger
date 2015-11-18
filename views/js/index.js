@@ -6,6 +6,7 @@ var NUM_ENTRIES = 6; // number of dialog rows allowed in the application
 var NUM_TIMERS = NUM_ENTRIES + 1; // timer 6 is for the send button
 // call NUM_ENTRIES for send button timer
 var SEND_TIMER = NUM_ENTRIES;
+var TIMER_TEXT_SEND = 'T -';
 // Typing modes
 var TOPIC = 0; // users post or select topics
 var CHAT  = 1; // two users chat one on one
@@ -36,7 +37,7 @@ var edit = { // dep: time, textBar, $
         textBar.changeAction(CHAT);   // clear text box and use correct dialog
         time.from(edit.row, "other"); // write other onto the last row
         edit.increment();             // increment place to write to
-        time.countDown(SEND_TIMER, send.passOn);     // time out input
+        time.countDown(SEND_TIMER, TIMER_TEXT_SEND, send.passOn);     // time out input
     },
     scoot: function(){
         for(var i = 2; i < NUM_ENTRIES; i++){
@@ -77,7 +78,7 @@ var change = { // dep: send, time, textBar
         if(data.first){
             send.mode = CHAT;
             time.from(1, "You");
-            time.countDown(SEND_TIMER, send.passOn);     // time out input
+            time.countDown(SEND_TIMER, TIMER_TEXT_SEND, send.passOn); // time out input
         } else {
             send.mode = BLOCK;
             time.from(1, "other");
@@ -86,12 +87,15 @@ var change = { // dep: send, time, textBar
     },
 }
 
+var CHATGLYPH = 'user'; // || plus || remove
+var SUBGLYPH = 'plus';
+
 // logic for recieving topics to subscribe to and matched topics
 var topic = { // dep: time, $
     pending: '',
     firstEmpty: function(){
         for( var i=0; i < NUM_ENTRIES; i++){
-            if($('#icon' + i).hasClass('glyphicon-plus') || $('#icon' + i).hasClass('glyphicon-remove') ){;}
+            if($('#icon' + i).hasClass('glyphicon-' + SUBGLYPH) || $('#icon' + i).hasClass('glyphicon-' + CHATGLYPH) ){;}
             else{return i;} // given nothing in this row signal it is free
         } // if the rows have been exhusted write to first row
         return 0;
@@ -99,15 +103,15 @@ var topic = { // dep: time, $
     get: function(get){
         var row = topic.firstEmpty();
         if($.type(get.user) === 'string'){                // if this is a pending conversation (got a user id)
-            $('#icon' + row).addClass('glyphicon-remove');                // add "decline" icon
-            time.countDown(row, function(){topic.start(row, get.user);}); // Set timer on this row
+            $('#icon' + row).addClass('glyphicon-' + CHATGLYPH);          // add "decline" icon
+            time.countDown(row, 'Cancel -', function(){topic.start(row, get.user);}); // Set timer on this row
         } else {                                                          // given subbable
-            $('#icon' + row).addClass('glyphicon-plus');                  // add the plus icon
+            $('#icon' + row).addClass('glyphicon-' + SUBGLYPH);           // add the plus icon
             $('#button' + row).click(function(){
                 sock.et.emit('sub', get.user);
-                topic.done(row, 'plus');
+                topic.done(row, SUBGLYPH);
             });
-            time.countDown(row, function(){topic.done(row, 'plus')});     // Set timer on this row
+            time.countDown(row, 'Add -',function(){topic.done(row, SUBGLYPH)});     // Set timer on this row
         }
         $('#button' + row).css('visibility', 'visible');
         $('#dialog' + row).html(get.text);
@@ -122,7 +126,7 @@ var topic = { // dep: time, $
     },
     start: function(row, talkingTo){               // at this juncture we will need to start the conversation
         topic.pending = $('#dialog' + row).html(); // store topic dialog
-        topic.done(row, 'remove');                 // remove this item from list
+        topic.done(row, CHATGLYPH);                // remove this item from list
         sock.et.emit("initTopic", talkingTo);      // signal which user that needs to be connected with
     }
 }
@@ -157,7 +161,8 @@ var send = { // dep: sock, change, edit, textBar
             if(send.empty){
                 send.empty = false;
                 time.counter[SEND_TIMER] = WAIT_TIME - 1; // note: Make sure post sent before timeout on other client
-                time.countDown(SEND_TIMER, send.create);  // this is where breakers will start being timed
+                time.countDown(SEND_TIMER, TIMER_TEXT_SEND, send.create);
+                // this is where breakers will start being timed
             }
         }else if(send.mode === CHAT){
             if(send.empty){edit.onStart(); send.empty = false;} // account for nessisary changeitions
@@ -171,7 +176,7 @@ var send = { // dep: sock, change, edit, textBar
         time.stopSend(WAIT_TIME);        // in case this was called by passOn
         send.mode = BLOCK;               // block input till time to live is over
         textBar.changeAction(BLOCK);     // display notice of block
-        time.countDown(SEND_TIMER, function(){
+        time.countDown(SEND_TIMER, TIMER_TEXT_SEND, function(){
             time.stopSend("");           // reset timer
             send.empty = true;           // text is now empty
             send.mode = TOPIC;           // set so topics can be made again
@@ -214,11 +219,11 @@ var info = {
 var time = { // dep: document
     counter: [], // one exist per row, last is send timer
     inProg: [],  // IDs of timers in case clear is needed
-    countDown: function(row, ondone){
+    countDown: function(row, text, ondone){
         if (time.counter[row]) {
             time.counter[row]--;
-            $('#timer' + row).html("T-" + time.counter[row] + " ");
-            time.inProg[row] = setTimeout(function(){time.countDown(row, ondone);}, 1000);
+            $('#timer' + row).html(text + time.counter[row] + " ");
+            time.inProg[row] = setTimeout(function(){time.countDown(row, text, ondone);}, 1000);
         } else {
             $('#timer' + row).html('');
             time.counter[row] = WAIT_TIME;
