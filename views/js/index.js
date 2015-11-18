@@ -114,6 +114,7 @@ var topic = { // dep: time, $
     },
     done: function(row, icon) {                            // action to occur on count end, removes entry
         clearTimeout(time.inProg[row]);                    // deactivate timeout if active
+        time.counter[row] = WAIT_TIME;                     // reset timer
         $('#icon' + row).removeClass('glyphicon-' + icon); // reset so sub or decline can be reintroduced
         $('#button' + row).off('click');                   // remove click event
         $('#button' + row).css('visibility', 'hidden');    // on end hide button
@@ -122,7 +123,7 @@ var topic = { // dep: time, $
     start: function(row, talkingTo){               // at this juncture we will need to start the conversation
         topic.pending = $('#dialog' + row).html(); // store topic dialog
         topic.done(row, 'remove');                 // remove this item from list
-        sock.et.emit("selectTopic", talkingTo);    // signal which user that needs to be connected with
+        sock.et.emit("initTopic", talkingTo);      // signal which user that needs to be connected with
     }
 }
 

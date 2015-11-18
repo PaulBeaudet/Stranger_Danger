@@ -62,7 +62,7 @@ var topic = {
                     if(topic.db[targetID].sub[i] === topicIndex){              // if their topic matches up with ours
                         var found = topic.db[targetID].user;                   // who matched?
                         console.log(topic.db[targetID].unique + ' matches!');
-                        topic.db[userID].onInterest++;
+                        topic.db[userID].onInterest++;                         // Send matches out
                         topic.action('topic', user, {user:found, text: GEN_TOPICS[topicIndex], code:topicIndex});
                         topic.action('topic', found, {user:user, text: GEN_TOPICS[topicIndex], code:topicIndex});
                         return;                                  // stop recursion, end madness!
@@ -150,9 +150,9 @@ var sock = { // depends on socket.io, reaction, and topic
                 // ------ Creating topics ---------
                 socket.on('create', reaction.onCreate);
                 socket.on('sub', function(topicID){reaction.toSub(socket.id, topicID, connection);});
-                socket.on('selectTopic', function(matchID){ // will be called by both clients at zero time out
+                socket.on('initTopic', function(matchID){ // will be called by both clients at zero time out
                     if(sock.io.sockets.connected[matchID]){
-                        if(reaction.timeToTalk(socket.id, matchID)){
+                        if(reaction.timeToTalk(socket.id, matchID)){ // once both sockets check in
                             sock.io.to(matchID).emit('chatInit', {id: socket.id, first: true});
                             sock.io.to(socket.id).emit('chatInit', {id: matchID, first: false});
                         }
