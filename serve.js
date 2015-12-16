@@ -44,26 +44,25 @@ var topicDB = {                                           // depends on mongo
 var userDB = { // requires mongo and topic
     temp: [],  // in ram user data
     logout: function(ID){
-        // userDB.toggle([ID.socket]); // TODO: maybe? or redundant?
-        mongo.user.findOne({email: ID.email}, function(err, doc){
+        var userNum = userDB.grabIndex(ID.socket);
+        var dataUpdate = {subscribed: userDB.temp[userNum].sub, toSub: userDB.temp[userNum].toSub}
+        console.log(dataUpdate);
+        mongo.user.findOneAndUpdate({email: ID.email}, dataUpdate, function(err, doc){
             if(err){ console.log(err);
             } else if (doc){ // save users session information when their socket disconects TODO: or expires
-                doc.subscribed = userDB.temp.sub;  // new subscriptions
-                doc.toSub = userDB.temp.toSub;     // which potentail subs have been presented
-                doc.save();
+                userDB.temp.splice(userDB.grabIndex(ID.socket), 1);
                 console.log(ID.email + ' disconnected');
             } else {console.log('whats up doc?');}
         })
-        userDB.temp.splice(userDB.grabIndex(ID.socket), 1);
     },
     grabIndex: function(socket){return userDB.temp.map(function(each){return each.socket;}).indexOf(socket);},
     checkIn: function(ID) {          // create temporary persistence entry for online users
-        mongo.user.findOne({email: ID.email}, function(err, user){
+        mongo.user.findOne({email: ID.email}, function(err, doc){
             if(err){ console.log(err); // users must be signed up
-            } else if (user){
+            } else if (doc){
                 userDB.temp.push({ // toMatch & Sub default to 0
                     user: ID.email,        socket: ID.socket, // known details
-                    sub: user.subscribed,  toSub: user.toSub, // persistant details
+                    sub: doc.subscribed,  toSub: doc.toSub, // persistant details
                     toMatch: 0, timer: 0                      // temp details
                 });
                 topic.get(ID.socket, true);                   // get topic AFTER db quary
@@ -237,7 +236,7 @@ var mongo = { // depends on: mongoose
             id: ObjectId,
             email: { type: String, required: '{PATH} is required', unique: true },
             password: { type: String, required: '{PATH} is required' },
-            subscribed: { type: Array },        // topic ids user is subscribed to
+            subscribed: [Number],                  // topic ids user is subscribed to
             toSub: { type: Number, default: 0 },   // search possition for subscription (w/user)
             acountType: { type: String },          // temp, premium, moderator, admin, ect
         }));
