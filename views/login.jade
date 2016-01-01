@@ -1,28 +1,8 @@
-doctype html
-html
-  head
-    meta(name='format-detection', content='telephone=no')
-    meta(name='msapplication-tap-highlight', content='no')
-    meta(name='viewport', content='user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width')
-    link(rel='stylesheet', href='bower_components/bootstrap/dist/css/bootstrap.min.css')
-    link(rel='stylesheet', href='bower_components/bootstrap/dist/css/bootstrap-theme.min.css')
-    link(rel='stylesheet', type='text/css', href='css/index.css')
-    title Stangers! Beta
-  body
-    // Value prop
+// -- login.jade
+extends ./header.jade
+
+block content
     .container
-      .header.clearfix
-        nav
-          ul.nav.nav-pills.pull-right
-            li(role='presentation')
-              a(href='/about') Story
-            li(role='presentation')
-              a(href='/about') Contact
-            li.active(role='presentation')
-              a(href='/beta/#signup') Sign Up
-            li(role='presentation')
-              a(href='/login') Login
-        h3.text-muted OurService
       // sign in form
       #signup.jumbotron
         h1 Sign in
@@ -35,7 +15,6 @@ html
             label(for='signupPassword')  Password
             input.form-control(type='password', name='password', required='true')
           input#submit.btn.btn-lg.btn-success(type='submit', value='submit')
-
       // footer
       footer.footer
         p &copy; OurService 2015 ~ Make all the things!

@@ -1,27 +1,8 @@
-doctype html
-html
-  head
-    meta(name='format-detection', content='telephone=no')
-    meta(name='msapplication-tap-highlight', content='no')
-    meta(name='viewport', content='user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width')
-    link(rel='stylesheet', href='bower_components/bootstrap/dist/css/bootstrap.min.css')
-    link(rel='stylesheet', href='bower_components/bootstrap/dist/css/bootstrap-theme.min.css')
-    link(rel='stylesheet', type='text/css', href='css/index.css')
-    title Stangers! Beta
-  body
+// -- about.jade
+extends ./header.jade
+
+block content
     .container
-      .header.clearfix
-        nav
-          ul.nav.nav-pills.pull-right
-            li(role='presentation')
-              a(href='/about') Story
-            li(role='presentation')
-              a(href='/about') Contact
-            li.active(role='presentation')
-              a(href='/beta#signup') Sign Up
-            li(role='presentation')
-              a(href='/login') Login
-        h3.text-muted OurService
       #about.row.marketing
         h1 About OurService
         .col-lg-6
@@ -47,25 +28,10 @@ html
             | OurService matches your topics to similar users who happen to be online when you are.
             | Once the system makes a match there will be a countdown to talk with them. Simple as that. Stop
             | talking to repeat the process, keep talking to potentially make a new friend.
-          h4 Is OurService Anonomous?
-          p
-            | Short answer is yes, the long answer is no.
-            | Asking, "anonmous to who?" Makes this question more clear.
-            | By default, no one needs to use an identy in order to use OurService besides paying to sign-up.
-            | Effectively, given two users have never talked before, they are in simple terms
-            | anonomous to one another.
-            | Once users get talking, our paying customers can label users they have had good conversations
-            | with. The label basically favorites the person so that if they are on again our robots know to
-            | prioritize making the match again.
-          p
-            | OurService, does keep track of everyone by a unique ID and stores unique words
-            | that they use in order to determine which other users might want to see their topics. OurService
-            | strictly uses user data to provide value to the service and its parent companies. Please
-            | see our privacy policy for more details about how the data can and cannot be used.
       // footer
       footer.footer
         p &copy; OurService 2015 ~ Make all the things!
-    // end of container
-    // Javescript dependencies
-    script(src='bower_components/jquery/dist/jquery.min.js')
-    script(src='bower_components/bootstrap/dist/js/bootstrap.min.js')
+// end of container
+// Javescript dependencies
+script(src='bower_components/jquery/dist/jquery.min.js')
+script(src='bower_components/bootstrap/dist/js/bootstrap.min.js')
