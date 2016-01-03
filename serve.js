@@ -7,30 +7,24 @@ const FREQUENCY = 9000; // Time it takes to fill next row
 const READ_TIME = WAIT_TIME * 1000 / NUM_ENTRIES; // ms to wait for a user to read a topic
 // in this way the server will never send out more topics than a client can handle
 // because the first entry should expire before the NUM_ENTRIES + 1(th) is sent leaving a possible spot to fill
-var GEN_TOPICS = [
-    "What is a personal project you are working on?",
-    "what do you do for a living?",
-    "Manchester NH",
-    "Star Wars or Start Trek?",
-    "Where is the most exciting place you have been to?",
-    "How are you going to change the world?"
-];
 
 // abstracts persistent and temporary topic data
 var topicDB = {                                           // depends on mongo
     temp: [],                                             // in ram topic data
     init: function(number){                               // populates topic array, init feed zero
-        mongo.topic.findOne({index: number}, function(err, topic){
-            if(err){console.log('load complete');}        // assume out of range
-            else{
-                topicDB.temp.push(topic.text);            // add topic to temp list
-                process.nextTick(topicDB.init(number++)); // recursively load individual topics
+        mongo.topic.findOne({index: number}, function(err, topick){
+            if(err){console.log('err topic load');}       // assume out of range
+            else if(topick){
+                topicDB.temp.push(topick.text);            // add topic to temp list
+                topicDB.init(number+1);                   // recursively load individual topics
             } // Six topics would probably load fine syncronously, plan is to handle thousands however
         });   // asyncronously calling this into memory should increase server response time
     },
-    add: function(text){                               // save user created topics
+    onCreate: function(text){
+        console.log('adding topic: ' + text)
+        //GEN_TOPICS.push(text);
         var doc = new mongo.topic({text: text});       // grab a schema for a new document
-        mongo.topic.count().exec(function(err, count){ // find out was
+        mongo.topic.count().exec(function(err, count){ // find out which topic this will be
             doc.index = count;                         // add unique count property to document
             doc.save(function(err){                    // write new topic to database
                 if(err){console.log(err);}             // note error if there was one
@@ -86,14 +80,13 @@ var userDB = { // requires mongo and topic
 // distribute topics
 var topic = { // depends on: userDB and topicDB
     action: function(command, user, data){console.log(command + '-' + user + '-' + data);}, // replace with real command
-
     get: function(socket, flipbit){ // starts search for topics (booth to sub and to have)
         var userNum = userDB.grabIndex(socket);          // figures which element of db array for users
         if(userNum > -1){
             var subIndex = userDB.temp[userNum].toSub; // grab index of current potential sub of interest
-            if( subIndex < GEN_TOPICS.length && flipbit){ // alternate flipbit for new sub or potential match
-                topic.action('topic', socket, {user:subIndex, text:GEN_TOPICS[subIndex]});
-                // TODO: Make sure this is a topic the user is unsubscribed to
+            if( subIndex < topicDB.temp.length && flipbit){ // alternate flipbit for new sub or potential match
+                topic.action('topic', socket, {user:subIndex, text:topicDB.temp[subIndex]});
+                // TODO: Make sure this is a topic the user is unsubscribed to and exist
                 userDB.temp[userNum].toSub++;             // next potential sub of interest to user
             } else if (userNum && userDB.temp.length > 1){  // users beside first and more than one user
                 process.nextTick(function(){topic.match(socket, 0);}); // next loop search for a match to interest
@@ -101,7 +94,6 @@ var topic = { // depends on: userDB and topicDB
             userDB.temp[userNum].timer = setTimeout(function(){topic.get(socket, !flipbit)}, FREQUENCY);
         } else {console.log('no user exist?');}
     },
-
     match: function ( socket, targetMatch ){    // find a user with a the same topic
         var userNum = userDB.grabIndex(socket); // find users possition in array
         if(userNum && userDB.temp.length > 1){  // Question our own existence and whether its worth the effort
@@ -114,7 +106,6 @@ var topic = { // depends on: userDB and topicDB
             } else { topic.search(socket, userNum, userNum - 1); } // starting search (user before this user)
         }
     },
-
     search: function ( socket, userNum, targetNum ){  // BLOCKING, Focus is searching one topic per prospect
         var matchSub = userDB.temp[userNum].sub[userDB.temp[userNum].toMatch];
         if(matchSub !== undefined){
@@ -123,8 +114,8 @@ var topic = { // depends on: userDB and topicDB
                     if(userDB.temp[targetNum].sub[i] === matchSub){ // if their topic matches up with ours
                         var found = userDB.temp[targetNum].socket;  // who matched?
                         userDB.temp[userNum].toMatch++;             // increment to the next possible match
-                        topic.action('topic', socket, {user:found, text: GEN_TOPICS[matchSub], code:matchSub});
-                        topic.action('topic', found, {user:socket, text: GEN_TOPICS[matchSub], code:matchSub});
+                        topic.action('topic', socket, {user:found, text: topicDB.temp[matchSub], code:matchSub});
+                        topic.action('topic', found, {user:socket, text: topicDB.temp[matchSub], code:matchSub});
                         return;                                     // stop recursion, end madness!
                     }
                 }
@@ -176,11 +167,6 @@ var reaction = { // depends on topic
             return true;                         // ready to chat
         }
     },
-    onCreate: function(text){
-        console.log('adding topic: ' + text)
-        GEN_TOPICS.push(text);
-        topicDB.add(text);
-    },
 }
 
 // socket.io logic
@@ -192,7 +178,7 @@ var sock = { // depends on socket.io, reaction, and topic
             var email = reaction.onConnect(socket); // email = unique key for user found in session cookie
             if(email){
                 // ------ Creating topics ---------
-                socket.on('create', reaction.onCreate);
+                socket.on('create', topicDB.onCreate);
                 socket.on('sub', function(topicID){reaction.toSub(socket.id, topicID, email);});
                 socket.on('initTopic', function(matchID){ // will be called by both clients at zero time out
                     if(sock.io.sockets.connected[matchID]){
@@ -244,6 +230,7 @@ var mongo = { // depends on: mongoose
             index: {type: Number, unique: true},
             text: {type: String, unique: true}
         }));
+        topicDB.init(0);                            // pull global topics into ram (async)
     },
     signup: function(req, res){
         var user = new mongo.user({
@@ -307,7 +294,6 @@ var serve = { // depends on everything
         var app = serve.express();
         var http = require('http').Server(app);            // http server for express framework
         app.set('view engine', 'jade');                    // template with jade
-
         mongo.connect();                                   // connect to mongo.db
         app.use(require('compression')());                 // gzipping for requested pages
         app.use(serve.parse.json());                       // support JSON-encoded bodies
