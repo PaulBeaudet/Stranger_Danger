@@ -1,8 +1,11 @@
 // index.js of anonChat Copyright 2015 Paul Beaudet, MIT Licence see LICENCE for detials
 // Constants, these can change the behavior of the application
-var WAIT_TIME = 30;  // time to wait for talking turn
-var TOPIC_TIME = 60; // time for topics to show
-var NUM_ENTRIES = 6; // number of dialog rows allowed in the application
+// Timing constants
+var MINUTE = 60000      // 60 seconds
+var EXPIRE_CHECK = 5000 // 5 seconds
+var WAIT_TIME = 30;     // time to wait for talking turn
+var TOPIC_TIME = 60;    // time for topics to show
+var NUM_ENTRIES = 6;    // number of dialog rows allowed in the application
 var NUM_TIMERS = NUM_ENTRIES + 1; // timer 6 is for the send button
 // call NUM_ENTRIES for send button timer
 var SEND_TIMER = NUM_ENTRIES;
@@ -107,8 +110,9 @@ var topic = { // dep: time, $
             time.countDown(row, 'Cancel -', function(){topic.start(row, get.user);}); // Set timer on this row
         } else {                                                          // given subbable
             $('#icon' + row).addClass('glyphicon-' + SUBGLYPH);           // add the plus icon
-            $('#button' + row).click(function(){
-                sock.et.emit('sub', get.user);
+            $('#button' + row).click(function(){                          // If sub button is clicked
+                sock.et.emit('sub', get.user);                            // subscribe event
+                inactivity.status = false;                                // note activity
                 topic.done(row, SUBGLYPH);
             });
             time.countDown(row, 'Add -',function(){topic.done(row, SUBGLYPH)});     // Set timer on this row
@@ -154,7 +158,8 @@ var send = { // dep: sock, change, edit, textBar
                 time.stopSend("");           // stop the clock from running anymore
             }
         }
-        send.empty = true; // it will be empty when it is responded to.
+        inactivity.status = false; // note activity
+        send.empty = true;         // it will be empty when it is responded to.
     },
     input: function(){
         if(send.mode === TOPIC){
@@ -170,6 +175,7 @@ var send = { // dep: sock, change, edit, textBar
             sock.et.emit("chat", {text: $('#textEntry').val(), id: send.to}); // send to other user
         } // block more input from happening, leaving last sent message in box
         else if(send.mode === BLOCK){ $('#textEntry').val(''); }
+        inactivity.status = false; // note activity
     },
     create: function(){ // called when topic composition is complete
         sock.et.emit('create', $('#textEntry').val()); // Signal to the server that composition of topic is done
@@ -212,6 +218,22 @@ var info = {
     home: function(){
         if(info.inProg){clearTimeout(info.inProg);}
         $('#info').html('Subscribe to topics or wait for conversation');
+    }
+}
+
+// session logic -- Logs out user if inactive
+var inactivity = {
+    accumalated: 0,
+    status: true,
+    check: function(){
+        if(inactivity.status){ inactivity.accumalated += EXPIRE_CHECK; }
+        else { inactivity.accumalated = 0; }
+        if(inactivity.accumalated > MINUTE){   // if inactivitly continues beyound threshold
+            window.location.replace('/login'); // redirect to login page
+        } else {
+            setTimeout(inactivity.check, EXPIRE_CHECK);
+        }
+        inactivity.status = true;
     }
 }
 
@@ -270,4 +292,5 @@ $(document).ready(function(){
     $('#sendButton').click(send.passOn);                       // provide a button click action
     document.getElementById('textEntry').oninput = send.input; // listen for input event
     sock.init();                                               // listen for socket events
+    inactivity.check();                                        // checks for session inactivity
 });
