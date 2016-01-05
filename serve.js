@@ -13,7 +13,7 @@ var topicDB = {                                           // depends on mongo
     temp: [],                                             // in ram topic data
     init: function(number){                               // populates topic array, init feed zero
         mongo.topic.findOne({index: number}, function(err, topick){
-            if(err){console.log('err topic load');}       // assume out of range
+            if(err){console.log(err + '-topicDB.init');}       // assume out of range
             else if(topick){
                 topicDB.temp.push(topick.text);            // add topic to temp list
                 topicDB.init(number+1);                   // recursively load individual topics
@@ -21,13 +21,11 @@ var topicDB = {                                           // depends on mongo
         });   // asyncronously calling this into memory should increase server response time
     },
     onCreate: function(text){
-        console.log('adding topic: ' + text)
-        //GEN_TOPICS.push(text);
         var doc = new mongo.topic({text: text});       // grab a schema for a new document
         mongo.topic.count().exec(function(err, count){ // find out which topic this will be
             doc.index = count;                         // add unique count property to document
             doc.save(function(err){                    // write new topic to database
-                if(err){console.log(err);}             // note error if there was one
+                if(err){console.log(err + ' onCreate');}             // note error if there was one
                 else{topicDB.temp.push(text);}         // also add topic in temorary array
             });                                        // TODO subscribe user to topic (return count ID of topic)
         });
@@ -40,19 +38,17 @@ var userDB = { // requires mongo and topic
     logout: function(ID){
         var userNum = userDB.grabIndex(ID.socket);
         var dataUpdate = {subscribed: userDB.temp[userNum].sub, toSub: userDB.temp[userNum].toSub}
-        console.log(dataUpdate);
         mongo.user.findOneAndUpdate({email: ID.email}, dataUpdate, function(err, doc){
-            if(err){ console.log(err);
+            if(err){ console.log(err + '-userDB.logout');
             } else if (doc){ // save users session information when their socket disconects TODO: or expires
                 userDB.temp.splice(userDB.grabIndex(ID.socket), 1);
-                console.log(ID.email + ' disconnected');
-            } else {console.log('whats up doc?');}
+            }
         })
     },
     grabIndex: function(socket){return userDB.temp.map(function(each){return each.socket;}).indexOf(socket);},
     checkIn: function(ID) {          // create temporary persistence entry for online users
         mongo.user.findOne({email: ID.email}, function(err, doc){
-            if(err){ console.log(err); // users must be signed up
+            if(err){ console.log(err + '-userDB.checkin'); // users must be signed up
             } else if (doc){
                 userDB.temp.push({ // toMatch & Sub default to 0
                     user: ID.email,        socket: ID.socket, // known details
@@ -60,8 +56,7 @@ var userDB = { // requires mongo and topic
                     toMatch: 0, timer: 0                      // temp details
                 });
                 topic.get(ID.socket, true);                   // get topic AFTER db quary
-                console.log(ID.email + ' connected');         // declare connectedness
-            } else {console.log('no db doc');}
+            }
         });
     },
     toggle: function(socket){ // stop topic.get NOTE: takes an array of sockets normally [two, sockets]
@@ -92,7 +87,7 @@ var topic = { // depends on: userDB and topicDB
                 process.nextTick(function(){topic.match(socket, 0);}); // next loop search for a match to interest
             }
             userDB.temp[userNum].timer = setTimeout(function(){topic.get(socket, !flipbit)}, FREQUENCY);
-        } else {console.log('no user exist?');}
+        }
     },
     match: function ( socket, targetMatch ){    // find a user with a the same topic
         var userNum = userDB.grabIndex(socket); // find users possition in array
@@ -148,7 +143,6 @@ var reaction = { // depends on topic
     toSub: function(socket, topicID, email){
         var userID = userDB.grabIndex(socket);
         userDB.temp[userID].sub.push(topicID);
-        console.log(email + ' subbed to ' + userDB.temp[userID].sub);
     },
     readyToChat: [],
     timeToTalk: function(socketID, matchID){          // logic that determines who responds first
@@ -186,7 +180,7 @@ var sock = { // depends on socket.io, reaction, and topic
                             sock.io.to(matchID).emit('chatInit', {id: socket.id, first: true});
                             sock.io.to(socket.id).emit('chatInit', {id: matchID, first: false});
                         }
-                    } else { console.log('rejected chat' + matchID + 'not connected');}
+                    }
                 });
                 // -- Real time chat --
                 socket.on('chat', function (rtt){sock.io.to(rtt.id).emit('toMe', {text: rtt.text, row: 0});});
@@ -200,7 +194,6 @@ var sock = { // depends on socket.io, reaction, and topic
                     userDB.logout({email: email, socket: socket.id}); // log out based on unique connection ID
                 });
             } else { // cookie expiration event
-                console.log('me want cookie!');                   // express disapointment
                 sock.io.to(socket.id).emit('redirect', '/login'); // point the client to login page to get a valid cookie
             }
         });
@@ -238,7 +231,7 @@ var mongo = { // depends on: mongoose
             password: mongo.hash.hashSync(req.body.password, mongo.hash.genSaltSync(10)),
         });
         user.save(function(err){
-            if(err){console.log(err); }
+            if(err){console.log(err + '-mongo.signup'); }
             else { res.redirect('/login');}
         });
     },
