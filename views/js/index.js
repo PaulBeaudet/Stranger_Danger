@@ -1,4 +1,4 @@
-// index.js of anonChat Copyright 2015 Paul Beaudet, MIT Licence see LICENCE for detials
+// index.js ~ Copyright 2015 Paul Beaudet ~ MIT License see LICENSE_MIT for detials
 // Constants, these can change the behavior of the application
 // Timing constants
 var MINUTE = 60000      // 60 seconds

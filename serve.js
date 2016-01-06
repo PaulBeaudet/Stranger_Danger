@@ -1,4 +1,4 @@
-// serve.js ~ Copyright 2015 Paul Beaudet
+// serve.js ~ Copyright 2015 Paul Beaudet ~ Licence Affero GPL ~ See LICENCE_AFFERO for details
 // This serves a test application that lets people talk to strangers
 const WAIT_TIME  = 30;  // time to wait for talking turn
 const NUM_ENTRIES = 6;  // number of dialog rows allowed in the application
@@ -13,9 +13,9 @@ var topicDB = {                                           // depends on mongo
     temp: [],                                             // in ram topic data
     init: function(number){                               // populates topic array, init feed zero
         mongo.topic.findOne({index: number}, function(err, topick){
-            if(err){console.log(err + '-topicDB.init');}       // assume out of range
+            if(err){console.log(err + '-topicDB.init');}
             else if(topick){
-                topicDB.temp.push(topick.text);            // add topic to temp list
+                topicDB.temp.push(topick.text);           // add topic to temp list
                 topicDB.init(number+1);                   // recursively load individual topics
             } // Six topics would probably load fine syncronously, plan is to handle thousands however
         });   // asyncronously calling this into memory should increase server response time
@@ -25,7 +25,7 @@ var topicDB = {                                           // depends on mongo
         mongo.topic.count().exec(function(err, count){ // find out which topic this will be
             doc.index = count;                         // add unique count property to document
             doc.save(function(err){                    // write new topic to database
-                if(err){console.log(err + ' onCreate');}             // note error if there was one
+                if(err){console.log(err + ' onCreate');}
                 else{topicDB.temp.push(text);}         // also add topic in temorary array
             });                                        // TODO subscribe user to topic (return count ID of topic)
         });
@@ -40,7 +40,7 @@ var userDB = { // requires mongo and topic
         var dataUpdate = {subscribed: userDB.temp[userNum].sub, toSub: userDB.temp[userNum].toSub}
         mongo.user.findOneAndUpdate({email: ID.email}, dataUpdate, function(err, doc){
             if(err){ console.log(err + '-userDB.logout');
-            } else if (doc){ // save users session information when their socket disconects TODO: or expires
+            } else if (doc){ // save users session information when their socket disconects
                 userDB.temp.splice(userDB.grabIndex(ID.socket), 1);
             }
         })
@@ -48,11 +48,11 @@ var userDB = { // requires mongo and topic
     grabIndex: function(socket){return userDB.temp.map(function(each){return each.socket;}).indexOf(socket);},
     checkIn: function(ID) {          // create temporary persistence entry for online users
         mongo.user.findOne({email: ID.email}, function(err, doc){
-            if(err){ console.log(err + '-userDB.checkin'); // users must be signed up
+            if(err){ console.log(err + '-userDB.checkin');    // users must be signed up
             } else if (doc){
-                userDB.temp.push({ // toMatch & Sub default to 0
+                userDB.temp.push({                            // toMatch & Sub default to 0
                     user: ID.email,        socket: ID.socket, // known details
-                    sub: doc.subscribed,  toSub: doc.toSub, // persistant details
+                    sub: doc.subscribed,  toSub: doc.toSub,   // persistant details
                     toMatch: 0, timer: 0                      // temp details
                 });
                 topic.get(ID.socket, true);                   // get topic AFTER db quary
@@ -75,14 +75,14 @@ var userDB = { // requires mongo and topic
 // distribute topics
 var topic = { // depends on: userDB and topicDB
     action: function(command, user, data){console.log(command + '-' + user + '-' + data);}, // replace with real command
-    get: function(socket, flipbit){ // starts search for topics (booth to sub and to have)
-        var userNum = userDB.grabIndex(socket);          // figures which element of db array for users
+    get: function(socket, flipbit){                         // starts search for topics (both to sub and to have)
+        var userNum = userDB.grabIndex(socket);             // figures which element of db array for users
         if(userNum > -1){
-            var subIndex = userDB.temp[userNum].toSub; // grab index of current potential sub of interest
+            var subIndex = userDB.temp[userNum].toSub;      // grab index of current potential sub of interest
             if( subIndex < topicDB.temp.length && flipbit){ // alternate flipbit for new sub or potential match
                 topic.action('topic', socket, {user:subIndex, text:topicDB.temp[subIndex]});
                 // TODO: Make sure this is a topic the user is unsubscribed to and exist
-                userDB.temp[userNum].toSub++;             // next potential sub of interest to user
+                userDB.temp[userNum].toSub++;               // next potential sub of interest to user
             } else if (userNum && userDB.temp.length > 1){  // users beside first and more than one user
                 process.nextTick(function(){topic.match(socket, 0);}); // next loop search for a match to interest
             }
