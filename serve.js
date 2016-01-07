@@ -202,7 +202,7 @@ var sock = { // depends on socket.io, reaction, and topic
 }
 
 var mongo = { // depends on: mongoose
-    SEVER: 'mongodb://localhost/anonChat',
+    SEVER: process.env.DB_ADDRESS,
     db: require('mongoose'),
     hash: require('bcryptjs'),
     user: null,
