@@ -10,7 +10,7 @@
   "author": "Paul Beaudet",
   "license": "UNLICENCED",
   "dependencies": {
-    "bower"; "1.5.3",
+    "bower": "1.5.3",
     "bcryptjs": "^2.3.0",
     "body-parser": "^1.14.1",
     "client-sessions": "^0.7.0",
