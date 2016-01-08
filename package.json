@@ -4,11 +4,13 @@
   "description": "This is a test web app for strangers finding common interest and chatting about it in real time",
   "main": "serve.js",
   "scripts": {
+    "postinstall": "./nodemodules/bower/bin/bower install"
     "test": "node serve.js"
   },
   "author": "Paul Beaudet",
   "license": "UNLICENCED",
   "dependencies": {
+    "bower"; "1.5.3",
     "bcryptjs": "^2.3.0",
     "body-parser": "^1.14.1",
     "client-sessions": "^0.7.0",
