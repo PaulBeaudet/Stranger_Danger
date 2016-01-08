@@ -4,8 +4,9 @@
   "description": "This is a test web app for strangers finding common interest and chatting about it in real time",
   "main": "serve.js",
   "scripts": {
-    "postinstall": "./nodemodules/bower/bin/bower install",
-    "test": "node serve.js"
+    "test": "node serve.js",
+    "postinstall": "./node_modules/bower/bin/bower install",
+    "start": "node serve.js"
   },
   "author": "Paul Beaudet",
   "license": "UNLICENCED",
