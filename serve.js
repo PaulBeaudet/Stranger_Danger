@@ -307,7 +307,7 @@ var serve = { // depends on everything
         app.use(router);                            // tell app what router to use
         topic.action = sock.emitTo;                 // assign how topics are sent
         sock.listen(http);                          // listen for socket connections
-        http.listen(3000);                          // listen on port 3000
+        http.listen(process.env.PORT);              // listen on specified PORT enviornment variable
     }
 }
 
