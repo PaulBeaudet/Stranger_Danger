@@ -7,7 +7,6 @@ block content
       #signup.jumbotron
         h1 Turn strangers into friends!
         h3 Well, thats the idea, have fun at least. Sign-up and login
-        p Note! Beta application, no guarantee of persistent or complete functionality. Submit feedback, inof8or@gmail.com
         form(method='post')
           input(type='hidden', name="_csrf", value=csrfToken)
           .form-group
@@ -17,6 +16,7 @@ block content
             label(for='signupPassword')  Password
             input#signupPassword.form-control(type='password', name="password")
           input#submit.btn.btn-lg.btn-success(type='submit', value='submit')
+        p Note! Beta application, no guarantee of persistent or complete functionality. Submit feedback, inof8or@gmail.com
       // footer
       footer.footer
         p &copy; Paul Beaudet 2016
