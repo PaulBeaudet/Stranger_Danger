@@ -16,10 +16,8 @@ block content
             label(for='signupPassword')  Password
             input#signupPassword.form-control(type='password', name="password")
           input#submit.btn.btn-lg.btn-success(type='submit', value='submit')
-        p Note! Beta application, no guarantee of persistent or complete functionality. Submit feedback, inof8or@gmail.com
+        include betaWarning.jade
+      // container closing
       // footer
-      footer.footer
-        p &copy; Paul Beaudet 2016
-    // Javescript dependencies
-    script(src='bower_components/jquery/dist/jquery.min.js')
-    script(src='bower_components/bootstrap/dist/js/bootstrap.min.js')
+      include copyright.jade
+    include bootstrap.jade
