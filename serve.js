@@ -56,7 +56,7 @@ var userDB = { // requires mongo and topic
                 userDB.temp.push({                            // toMatch & Sub default to 0
                     user: ID.email,       socket: ID.socket,  // known details
                     sub: doc.subscribed,  toSub: doc.toSub,   // persistant details
-                    subIDs: doc.subIDs                          // IDs of subscriptions
+                    subIDs: doc.subIDs,                       // IDs of subscriptions
                     toMatch: 0, timer: 0                      // temp details
                 });
                 topic.get(ID.socket, true);                   // get topic AFTER db quary
