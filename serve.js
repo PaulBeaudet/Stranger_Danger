@@ -18,13 +18,18 @@ var topicDB = {                                        // depends on mongo
             }
         });
     },
-    onCreate: function(text){
+    onCreate: function(text, ID){
+        var userNum = userDB.grabIndex(ID.socket);
         var doc = new mongo.topic({text: text});       // grab a schema for a new document
         mongo.topic.count().exec(function(err, count){ // find out which topic this will be
             doc.index = count;                         // add unique count property to document
+            doc.author = ID.email;                     // note the author of the topic
             doc.save(function(err){                    // write new topic to database
                 if(err){console.log(err + ' onCreate');}
-                else{topicDB.temp.push(text);}         // also add topic in temorary array
+                else {
+                    topicDB.temp.push(text);           // also add topic in temorary array
+                    userDB.temp[userNum].subIDs.push(doc.id); // add to this user subscriptions
+                }
             });                                        // TODO subscribe user to topic (return count ID of topic)
         });
     },
@@ -35,7 +40,7 @@ var userDB = { // requires mongo and topic
     temp: [],  // in ram user data
     logout: function(ID){
         var userNum = userDB.grabIndex(ID.socket);
-        var dataUpdate = {subscribed: userDB.temp[userNum].sub, toSub: userDB.temp[userNum].toSub}
+        var dataUpdate = {subscribed: userDB.temp[userNum].sub, toSub: userDB.temp[userNum].toSub, subIDs: userDB.temp[userNum].subIDs}
         mongo.user.findOneAndUpdate({email: ID.email}, dataUpdate, function(err, doc){
             if(err){ console.log(err + '-userDB.logout');
             } else if (doc){ // save users session information when their socket disconects
@@ -49,8 +54,9 @@ var userDB = { // requires mongo and topic
             if(err){ console.log(err + '-userDB.checkin');    // users must be signed up
             } else if (doc){
                 userDB.temp.push({                            // toMatch & Sub default to 0
-                    user: ID.email,        socket: ID.socket, // known details
+                    user: ID.email,       socket: ID.socket,  // known details
                     sub: doc.subscribed,  toSub: doc.toSub,   // persistant details
+                    subIDs: doc.subIDs                          // IDs of subscriptions
                     toMatch: 0, timer: 0                      // temp details
                 });
                 topic.get(ID.socket, true);                   // get topic AFTER db quary
@@ -170,7 +176,7 @@ var sock = { // depends on socket.io, reaction, and topic
             var email = reaction.onConnect(socket); // email = unique key for user found in session cookie
             if(email){
                 // ------ Creating topics ---------
-                socket.on('create', topicDB.onCreate);
+                socket.on('create', function(text){topicDB.onCreate(text, {email: email, socket: socket.id});});
                 socket.on('sub', function(topicID){reaction.toSub(socket.id, topicID, email);});
                 socket.on('initTopic', function(matchID){ // will be called by both clients at zero time out
                     if(sock.io.sockets.connected[matchID]){
@@ -213,11 +219,13 @@ var mongo = { // depends on: mongoose
             email: { type: String, required: '{PATH} is required', unique: true },
             password: { type: String, required: '{PATH} is required' },
             subscribed: [Number],                  // topic ids user is subscribed to
+            subIDs: [String],                       // IDs of subscriptions (objectId of topic)
             toSub: { type: Number, default: 0 },   // search possition for subscription (w/user)
             acountType: { type: String },          // temp, premium, moderator, admin, ect
         }));
         mongo.topic = mongo.db.model('topic', new Schema({
             id: ObjectId,
+            author: {type: String},
             index: {type: Number, unique: true},
             text: {type: String, unique: true}
         }));
