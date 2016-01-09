@@ -2,21 +2,21 @@
 extends ./header.jade
 
 block content
-    .container
-      // sign in form
-      #signup.jumbotron
+    include navbar.jade
+    // sign in form
+    #signup.jumbotron
         h1 Login
         form(method='post')
-          input(type='hidden', name="_csrf", value=csrfToken)
-          .form-group
-            label(for='signupEmail')  Email Address
-            input.form-control(type='email', name='email', required='true')
-          .form-group
-            label(for='signupPassword')  Password
-            input.form-control(type='password', name='password', required='true')
-          input#submit.btn.btn-lg.btn-success(type='submit', value='submit')
+            input(type='hidden', name="_csrf", value=csrfToken)
+            .form-group
+                label(for='signupEmail')  Email Address
+                input.form-control(type='email', name='email', required='true')
+            .form-group
+                label(for='signupPassword')  Password
+                input.form-control(type='password', name='password', required='true')
+            input#submit.btn.btn-lg.btn-success(type='submit', value='submit')
         include betaWarning.jade
-      // footer
-      include copyright.jade
+        // footer
+        include copyright.jade
     // end of container
     include bootstrap.jade
