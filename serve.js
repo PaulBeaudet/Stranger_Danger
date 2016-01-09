@@ -24,11 +24,11 @@ var topicDB = {                                        // depends on mongo
         mongo.topic.count().exec(function(err, count){ // find out which topic this will be
             doc.index = count;                         // add unique count property to document
             doc.author = ID.email;                     // note the author of the topic
-            doc.save(function(err){                    // write new topic to database
+            doc.save(function(err, created){                    // write new topic to database
                 if(err){console.log(err + ' onCreate');}
                 else {
                     topicDB.temp.push(text);           // also add topic in temorary array
-                    userDB.temp[userNum].subIDs.push(doc.id); // add to this user subscriptions
+                    userDB.temp[userNum].subIDs.push(created.id); // add to this user subscriptions
                 }
             });                                        // TODO subscribe user to topic (return count ID of topic)
         });
