@@ -5,7 +5,8 @@ block content
     .container
       // sign in form
       #signup.jumbotron
-        h1 Sign in
+        h1 Login
+        p Note! Beta application, no guarantee of persistent or complete functionality. Submit feedback, inof8or@gmail.com
         form(method='post')
           input(type='hidden', name="_csrf", value=csrfToken)
           .form-group
@@ -17,7 +18,7 @@ block content
           input#submit.btn.btn-lg.btn-success(type='submit', value='submit')
       // footer
       footer.footer
-        p &copy; OurService 2015 ~ Make all the things!
+        p &copy; Paul Beaudet 2016
     // end of container
     // Javescript dependencies
     script(src='bower_components/jquery/dist/jquery.min.js')
