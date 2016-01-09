@@ -1,24 +1,22 @@
 // serve.js ~ Copyright 2015 Paul Beaudet ~ Licence Affero GPL ~ See LICENCE_AFFERO for details
 // This serves a test application that lets people talk to strangers
-const WAIT_TIME  = 30;  // time to wait for talking turn
-const NUM_ENTRIES = 6;  // number of dialog rows allowed in the application
-const MINIMUM_TTL = 5;  // minimum amound of seconds that is applicable for a gettible topic
-const FREQUENCY = 9000; // Time it takes to fill next row
-const READ_TIME = WAIT_TIME * 1000 / NUM_ENTRIES; // ms to wait for a user to read a topic
-// in this way the server will never send out more topics than a client can handle
-// because the first entry should expire before the NUM_ENTRIES + 1(th) is sent leaving a possible spot to fill
 
-// abstracts persistent and temporary topic data
-var topicDB = {                                           // depends on mongo
-    temp: [],                                             // in ram topic data
-    init: function(number){                               // populates topic array, init feed zero
+// Constant factors
+const WAIT_TIME  = 30;                            // time topic displayed
+const NUM_ENTRIES = 6;                            // number of dialog rows allowed client side
+const FREQUENCY = WAIT_TIME * 1000 / NUM_ENTRIES; // frequency of topic send out
+
+// abstract persistent and temporary topic data
+var topicDB = {                                        // depends on mongo
+    temp: [],                                          // in ram topic data
+    init: function(number){                            // populates topic array, init feed zero
         mongo.topic.findOne({index: number}, function(err, topick){
             if(err){console.log(err + '-topicDB.init');}
             else if(topick){
-                topicDB.temp.push(topick.text);           // add topic to temp list
-                topicDB.init(number+1);                   // recursively load individual topics
-            } // Six topics would probably load fine syncronously, plan is to handle thousands however
-        });   // asyncronously calling this into memory should increase server response time
+                topicDB.temp.push(topick.text);        // add topic to temp list
+                topicDB.init(number+1);                // recursively load individual topics !!BLOCKING!!
+            }
+        });
     },
     onCreate: function(text){
         var doc = new mongo.topic({text: text});       // grab a schema for a new document
@@ -32,7 +30,7 @@ var topicDB = {                                           // depends on mongo
     },
 }
 
-// abstracts persistent and temporary user data
+// abstract persistent and temporary user data
 var userDB = { // requires mongo and topic
     temp: [],  // in ram user data
     logout: function(ID){
@@ -223,7 +221,7 @@ var mongo = { // depends on: mongoose
             index: {type: Number, unique: true},
             text: {type: String, unique: true}
         }));
-        topicDB.init(0);                            // pull global topics into ram (async)
+        topicDB.init(0);                            // pull global topics into ram
     },
     signup: function(req, res){
         var user = new mongo.user({
@@ -296,8 +294,8 @@ var serve = { // depends on everything
 
         app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (sockets, jquery, bootstrap)
         var router = serve.express.Router();
-        router.get('/', function ( req, res ){res.render('login', {csrfToken: req.csrfToken()});});
-        router.post('/', mongo.login);              // handle logins
+        router.get('/', function ( req, res ){res.render('beta', {csrfToken: req.csrfToken()});});
+        router.post('/', mongo.signup);             // handle logins
         router.get('/beta', function ( req, res ){res.render('beta', {csrfToken: req.csrfToken()});});
         router.post('/beta', mongo.signup);         // handle sign-ups
         router.get('/about', function ( req, res ){res.render('about');});
