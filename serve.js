@@ -24,12 +24,11 @@ var topicDB = {                                        // depends on mongo
         mongo.topic.count().exec(function(err, count){ // find out which topic this will be
             doc.index = count;                         // add unique count property to document
             doc.author = ID.email;                     // note the author of the topic
-            var objectId = doc._id;
-            doc.save(function(err, created){                    // write new topic to database
+            doc.save(function(err){                    // write new topic to database
                 if(err){console.log(err + ' onCreate');}
                 else {
                     topicDB.temp.push(text);           // also add topic in temorary array
-                    userDB.temp[userNum].subIDs.push(objectId); // add to this user subscriptions
+                    userDB.temp[userNum].subIDs.push(doc._id); // add to this user subscriptions
                 }
             });                                        // TODO subscribe user to topic (return count ID of topic)
         });
@@ -77,21 +76,33 @@ var userDB = { // requires mongo and topic
     }
 }
 
-// distribute topics
+// distribute topics: does two things- proposes topics and matches users based on topics
 var topic = { // depends on: userDB and topicDB
     action: function(command, user, data){console.log(command + '-' + user + '-' + data);}, // replace with real command
     get: function(socket, flipbit){                         // starts search for topics (both to sub and to have)
         var userNum = userDB.grabIndex(socket);             // figures which element of db array for users
         if(userNum > -1){
-            var subIndex = userDB.temp[userNum].toSub;      // grab index of current potential sub of interest
-            if( subIndex < topicDB.temp.length && flipbit){ // alternate flipbit for new sub or potential match
-                topic.action('topic', socket, {user:subIndex, text:topicDB.temp[subIndex]});
-                // TODO: Make sure this is a topic the user is unsubscribed to and exist
-                userDB.temp[userNum].toSub++;               // next potential sub of interest to user
+            if(flipbit){ // alternate flipbit for new sub or potential match
+                topic.propose(socket);
             } else if (userNum && userDB.temp.length > 1){  // users beside first and more than one user
                 process.nextTick(function(){topic.match(socket, 0);}); // next loop search for a match to interest
             }
             userDB.temp[userNum].timer = setTimeout(function(){topic.get(socket, !flipbit)}, FREQUENCY);
+            // TODO: create a propose and match timer and run the clocks async
+        }
+    },
+    propose: function(socket){
+        var userNum = userDB.grabIndex(socket);
+        if(userNum > -1){
+            for( var i = 0; userDB.temp[userNum].sub[i]; i++ ){ // for every topic this user is subscribbed to check sub status
+                if(userDB.temp[userNum].toSub === userDB.temp[userNum].sub[i]){ // if index matches topic already, user is subscribbed
+                    if( userDB.temp[userNum].toSub < topicDB.temp.length ){ userDB.temp[userNum].toSub++; } // increment
+                    else { userDB.temp[userNum].toSub = 0; }                                                // or start over
+                    process.nextTick(function(){topic.propose(socket);});                                   // try again on next tick
+                    return;                           // don't pass go or collect 200 dollars
+                }
+            } // else user is not subscribbed to this topic, propose it to them
+            topic.action('topic', socket, {user:userDB.temp[userNum].toSub, text:topicDB.temp[userDB.temp[userNum].toSub]});
         }
     },
     match: function ( socket, targetMatch ){    // find a user with a the same topic
