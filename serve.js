@@ -94,7 +94,7 @@ var topic = { // depends on: userDB and topicDB
     propose: function(socket){
         var userNum = userDB.grabIndex(socket);
         if(userNum > -1){
-            for( var i = 0; userDB.temp[userNum].sub[i] === undefined; i++ ){ // for every topic this user is subscribbed to check sub status
+            for( var i = 0; userDB.temp[userNum].sub[i] !== undefined; i++ ){ // for every topic this user is subscribbed to check sub status
                 if(userDB.temp[userNum].toSub === userDB.temp[userNum].sub[i]){ // if index matches topic already, user is subscribbed
                     if( userDB.temp[userNum].toSub < topicDB.temp.length ){ userDB.temp[userNum].toSub++; } // increment
                     else { userDB.temp[userNum].toSub = 0; }                                                // or start over
