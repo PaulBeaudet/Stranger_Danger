@@ -102,7 +102,9 @@ var topic = { // depends on: userDB and topicDB
                     return;                           // don't pass go or collect 200 dollars
                 }
             } // else user is not subscribbed to this topic, propose it to them
-            topic.action('topic', socket, {user:userDB.temp[userNum].toSub, text:topicDB.temp[userDB.temp[userNum].toSub]});
+            if(topicDB.temp[userDB.temp[userNum].toSub]){
+                topic.action('topic', socket, {user:userDB.temp[userNum].toSub, text:topicDB.temp[userDB.temp[userNum].toSub]});
+            }
         }
     },
     match: function ( socket, targetMatch ){    // find a user with a the same topic
