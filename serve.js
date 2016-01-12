@@ -85,7 +85,7 @@ var topic = { // depends on: userDB and topicDB
             if(flipbit){ // alternate flipbit for new sub or potential match
                 topic.propose(socket);
             } else if (userNum && userDB.temp.length > 1){  // users beside first and more than one user
-                process.nextTick(function(){topic.match(socket, 0);}); // next loop search for a match to interest
+                process.nextTick(function(){match.topic(socket, 0);}); // next loop search for a match to interest
             }
             userDB.temp[userNum].timer = setTimeout(function(){topic.get(socket, !flipbit)}, FREQUENCY);
             // TODO: create a propose and match timer and run the clocks async
@@ -106,17 +106,21 @@ var topic = { // depends on: userDB and topicDB
                 topic.action('topic', socket, {user:userDB.temp[userNum].toSub, text:topicDB.temp[userDB.temp[userNum].toSub]});
             }
         }
-    },
-    match: function ( socket, targetMatch ){    // find a user with a the same topic
+    }
+}
+
+// match users based on similar topics
+var match = { // depends on: userDB, topic, topicDB
+    topic: function ( socket, targetMatch ){    // find a user with a the same topic
         var userNum = userDB.grabIndex(socket); // find users possition in array
         if(userNum && userDB.temp.length > 1){  // Question our own existence and whether its worth the effort
             if(targetMatch){                    // should always have something after first run
                 var targetNum = userDB.grabIndex(targetMatch); // find array possition of target
                 if(targetNum > -1){             // sanity check: is target availible
-                    if(targetNum < userNum){topic.search(socket, userNum, targetNum);}
-                    else { topic.search(socket, userNum, userNum - 1);}
+                    if(targetNum < userNum){match.search(socket, userNum, targetNum);}
+                    else { match.search(socket, userNum, userNum - 1);}
                 }
-            } else { topic.search(socket, userNum, userNum - 1); } // starting search (user before this user)
+            } else { match.search(socket, userNum, userNum - 1); } // starting search (user before this user)
         }
     },
     search: function ( socket, userNum, targetNum ){  // BLOCKING, Focus is searching one topic per prospect
@@ -135,11 +139,11 @@ var topic = { // depends on: userDB and topicDB
             }
         } else { return;} // given no topic we have nothing further todo
         if(targetNum){    // so long as target id greater than being first user
-            process.nextTick(function (){topic.match(socket, topic.db[targetNum-1].user);});
+            process.nextTick(function (){match.topic(socket, topic.db[targetNum-1].user);});
         } else {                            // If we got to first user, loop back up to imediate previous user
             userDB.temp[userNum].toMatch++; // change what is being searched for to match
             if(userDB.temp[userNum].sub[userDB.temp[userNum].toMatch]){ // if this user has an interest in this slot
-                process.nextTick(function(){topic.match(socket, userDB.temp[userNum-1].socket);});
+                process.nextTick(function(){match.topic(socket, userDB.temp[userNum-1].socket);});
             }
         }
     }
