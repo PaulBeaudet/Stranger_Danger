@@ -104,7 +104,7 @@ var topic = { // dep: time, $
         return 0;
     },
     get: function(get){
-        for(var i = 0; i < NUM_ENTRIES; i++){if(get.text === $('#dialog' + row).html()){return;}} // reject if existing
+        for(var i = 0; i < NUM_ENTRIES; i++){if(get.text === $('#dialog' + i).html()){return;}} // reject if existing
         var row = topic.firstEmpty();                                     // note first available row
         if($.type(get.user) === 'string'){                                // detect match situation
             $('#icon' + row).addClass('glyphicon-' + CHATGLYPH);          // add "decline" icon
