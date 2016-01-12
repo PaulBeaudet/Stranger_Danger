@@ -104,8 +104,9 @@ var topic = { // dep: time, $
         return 0;
     },
     get: function(get){
-        var row = topic.firstEmpty();
-        if($.type(get.user) === 'string'){                // if this is a pending conversation (got a user id)
+        for(var i = 0; i < NUM_ENTRIES; i++){if(get.text === $('#dialog' + row).html()){return;}} // reject if existing
+        var row = topic.firstEmpty();                                     // note first available row
+        if($.type(get.user) === 'string'){                                // detect match situation
             $('#icon' + row).addClass('glyphicon-' + CHATGLYPH);          // add "decline" icon
             time.countDown(row, 'Cancel -', function(){topic.start(row, get.user);}); // Set timer on this row
         } else {                                                          // given subbable
