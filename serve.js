@@ -94,12 +94,12 @@ var topic = { // depends on: userDB and topicDB
     propose: function(socket){
         var userNum = userDB.grabIndex(socket);
         if(userNum > -1){
-            for( var i = 0; userDB.temp[userNum].sub[i] !== undefined; i++ ){ // for every topic this user is subscribbed to check sub status
-                if(userDB.temp[userNum].toSub === userDB.temp[userNum].sub[i]){ // if index matches topic already, user is subscribbed
-                    if( userDB.temp[userNum].toSub < topicDB.temp.length ){ userDB.temp[userNum].toSub++; } // increment
-                    else { userDB.temp[userNum].toSub = 0; }                                                // or start over
-                    process.nextTick(function(){topic.propose(socket);});                                   // try again on next tick
-                    return;                           // don't pass go or collect 200 dollars
+            userDB.temp[userNum].toSub++;                                                           // increment
+            if(userDB.temp[userNum].toSub === topicDB.temp.length){userDB.temp[userNum].toSub = 0;} // set back to zero if reached end
+            for( var i = 0; userDB.temp[userNum].sub[i] !== undefined; i++ ){                       // for every sub
+                if(userDB.temp[userNum].toSub === userDB.temp[userNum].sub[i]){                     // if matches topic, avoid
+                    process.nextTick(function(){topic.propose(socket);});                           // try again on next tick
+                    return;                                                                         // don't propose
                 }
             } // else user is not subscribbed to this topic, propose it to them
             if(topicDB.temp[userDB.temp[userNum].toSub]){
@@ -156,7 +156,7 @@ var reaction = { // depends on topic
         if(socket.request.headers.cookie){                              // if cookie exist
             var cookieCrums = socket.request.headers.cookie.split('='); // split correct cookie out
             email = cookie.email(cookieCrums[cookieCrums.length - 1]);  // decrypt email from cookie, make it userID
-            if(email){                                                 // make sure something came through
+            if(email){                                                  // make sure something came through
                 userDB.checkIn({email:email, socket:socket.id});
             } // deal with something not coming through in socket object
         }
