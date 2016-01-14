@@ -5,8 +5,7 @@ block content
     include navbar.jade
     // sign up form
     #signup.jumbotron
-        h1 Turn strangers into friends!
-        h3 Well, thats the idea, have fun at least. Sign-up and login
+        h1 Sign-up page
         form(method='post')
             input(type='hidden', name="_csrf", value=csrfToken)
             .form-group
@@ -16,6 +15,7 @@ block content
                 label(for='signupPassword')  Password
                 input#signupPassword.form-control(type='password', name="password")
             input#submit.btn.btn-lg.btn-success(type='submit', value='submit')
+        p Will be redirected to login when sign-up is done
     include betaWarning.jade
     include copyright.jade
 include bootstrap.jade
