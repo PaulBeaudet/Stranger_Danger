@@ -5,58 +5,58 @@ block content
     // Informational row
     .row
         .col-xs-12.text-center
-        h3#info.text-center
+            h3#info.text-center
     // chat Ice Breaker list
     .row
         .col-xs-12
-        table.table.table-hover.table-striped
-        tr
-            th
-                span#dialog0
-                button#button0.btn.btn-success.btn-lg.pull-right
-                    span#timer0.text-danger
-                    span#icon0.glyphicon(aria-hidden='true')
-        tr
-            th
-                span#dialog1
-                button#button1.btn.btn-success.btn-lg.pull-right
-                    span#timer1.text-danger
-                    span#icon1.glyphicon(aria-hidden='true')
-        tr
-            th
-                span#dialog2
-                button#button2.btn.btn-success.btn-lg.pull-right
-                    span#timer2.text-danger
-                    span#icon2.glyphicon(aria-hidden='true')
-        tr
-            th
-                span#dialog3
-                button#button3.btn.btn-success.btn-lg.pull-right
-                    span#timer3.text-danger
-                    span#icon3.glyphicon(aria-hidden='true')
-        tr
-            th
-                span#dialog4
-                button#button4.btn.btn-success.btn-lg.pull-right
-                    span#timer4.text-danger
-                    span#icon4.glyphicon(aria-hidden='true')
-        tr
-            th
-                span#dialog5
-                button#button5.btn.btn-success.btn-lg.pull-right
-                    span#timer5.text-danger
-                    span#icon5.glyphicon(aria-hidden='true')
+            table.table.table-hover.table-striped
+            tr
+                th
+                    span#dialog0
+                    button#button0.btn.btn-success.btn-lg.pull-right
+                        span#timer0.text-danger
+                        span#icon0.glyphicon(aria-hidden='true')
+            tr
+                th
+                    span#dialog1
+                    button#button1.btn.btn-success.btn-lg.pull-right
+                        span#timer1.text-danger
+                        span#icon1.glyphicon(aria-hidden='true')
+            tr
+                th
+                    span#dialog2
+                    button#button2.btn.btn-success.btn-lg.pull-right
+                        span#timer2.text-danger
+                        span#icon2.glyphicon(aria-hidden='true')
+            tr
+                th
+                    span#dialog3
+                    button#button3.btn.btn-success.btn-lg.pull-right
+                        span#timer3.text-danger
+                        span#icon3.glyphicon(aria-hidden='true')
+            tr
+                th
+                    span#dialog4
+                    button#button4.btn.btn-success.btn-lg.pull-right
+                        span#timer4.text-danger
+                        span#icon4.glyphicon(aria-hidden='true')
+            tr
+                th
+                    span#dialog5
+                    button#button5.btn.btn-success.btn-lg.pull-right
+                        span#timer5.text-danger
+                        span#icon5.glyphicon(aria-hidden='true')
     // chat bar
     .navbar.navbar-inverse.navbar-fixed-bottom(role='navigation')
         .navbar-text.pull.left
             .form-group
-            .col-xs-12.input-group.input-group-lg
-                input#textEntry.form-control(type='text')
-                span#sendButton.input-group-btn
-                button.btn.btn-info.btn-lg.pull-right(type='button')
-                    span#sendText
-                    span#timer6
-                    span.glyphicon.glyphicon-hand-right(aria-hidden='true')
+                .col-xs-12.input-group.input-group-lg
+                    input#textEntry.form-control(type='text')
+                    span#sendButton.input-group-btn
+                        button.btn.btn-info.btn-lg.pull-right(type='button')
+                            span#sendText
+                            span#timer6
+                            span.glyphicon.glyphicon-hand-right(aria-hidden='true')
 // Javescript dependencies
 include bootstrap.jade
 script(src='bower_components/socket.io-1.3.5/index.js')
