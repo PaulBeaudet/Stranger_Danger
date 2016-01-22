@@ -259,7 +259,8 @@ var time = { // dep: document
         for (var i = 0; i < NUM_TIMERS; i++){
             if(time.inProg[i]){clearTimeout(time.inProg[i]);} // deactivate active timeouts
             $('#timer' + i).html('');                         // empty timer text
-            time.counter[i] = TOPIC_TIMEOUT;                  // reset timeouts
+            if(i === SEND_TIMER){time.counter[row] = MESSAGE_TIMEOUT;}
+            else{time.counter[i] = TOPIC_TIMEOUT;}
         }
     },
     stopSend: function(text){
