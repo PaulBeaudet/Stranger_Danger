@@ -5,7 +5,7 @@ var MINUTE = 60000;               // 60 seconds
 var EXPIRE_CHECK = 5000;          // 5 seconds
 var EXPIRE_TIMEOUT = MINUTE * 2;  // time to expire
 var TOPIC_TIMEOUT = 30;           // timeout for topics
-var MESSAGE_TIMEOUT = 45:         // timeout for messages
+var MESSAGE_TIMEOUT = 45;         // timeout for messages
 var NUM_ENTRIES = 6;              // number of dialog rows allowed in the application
 var NUM_TIMERS = NUM_ENTRIES + 1; // timer 6 is for the send button
 // call NUM_ENTRIES for send button timer
