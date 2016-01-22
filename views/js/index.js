@@ -4,7 +4,8 @@
 var MINUTE = 60000;               // 60 seconds
 var EXPIRE_CHECK = 5000;          // 5 seconds
 var EXPIRE_TIMEOUT = MINUTE * 2;  // time to expire
-var WAIT_TIME = 45;               // time to wait for talking turn
+var TOPIC_TIMEOUT = 30;           // timeout for topics
+var MESSAGE_TIMEOUT = 45:         // timeout for messages
 var NUM_ENTRIES = 6;              // number of dialog rows allowed in the application
 var NUM_TIMERS = NUM_ENTRIES + 1; // timer 6 is for the send button
 // call NUM_ENTRIES for send button timer
@@ -123,7 +124,7 @@ var topic = { // dep: time, $
     },
     done: function(row, icon) {                            // action to occur on count end, removes entry
         clearTimeout(time.inProg[row]);                    // deactivate timeout if active
-        time.counter[row] = WAIT_TIME;                     // reset timer
+        time.counter[row] = TOPIC_TIMEOUT;                 // reset timer
         $('#icon' + row).removeClass('glyphicon-' + icon); // reset so sub or decline can be reintroduced
         $('#button' + row).off('click');                   // remove click event
         $('#button' + row).css('visibility', 'hidden');    // on end hide button
@@ -166,7 +167,7 @@ var send = { // dep: sock, change, edit, textBar
         if(send.mode === TOPIC){
             if(send.empty){
                 send.empty = false;
-                time.counter[SEND_TIMER] = WAIT_TIME - 1; // note: Make sure post sent before timeout on other client
+                time.counter[SEND_TIMER] = MESSAGE_TIMEOUT - 1; // note: Make sure post sent before timeout on other client
                 time.countDown(SEND_TIMER, TIMER_TEXT_SEND, send.create);
                 // this is where breakers will start being timed
             }
@@ -180,7 +181,7 @@ var send = { // dep: sock, change, edit, textBar
     },
     create: function(){ // called when topic composition is complete
         sock.et.emit('create', $('#textEntry').val()); // Signal to the server that composition of topic is done
-        time.stopSend(WAIT_TIME);        // in case this was called by passOn
+        time.stopSend(MESSAGE_TIMEOUT);  // in case this was called by passOn
         send.mode = BLOCK;               // block input till time to live is over
         textBar.changeAction(BLOCK);     // display notice of block
         time.countDown(SEND_TIMER, TIMER_TEXT_SEND, function(){
@@ -214,7 +215,7 @@ var info = {
         $('#info').html('Chat: Pressing done while text box empty, ends chat');
         info.inProg = setTimeout(function(){
             $('#info').html('Actions auto-complete on timeout');
-        }, (WAIT_TIME / 2 * 1000));
+        }, (MESSAGE_TIMEOUT / 2 * 1000));
     },
     home: function(){
         if(info.inProg){clearTimeout(info.inProg);}
@@ -249,7 +250,8 @@ var time = { // dep: document
             time.inProg[row] = setTimeout(function(){time.countDown(row, text, ondone);}, 1000);
         } else {
             $('#timer' + row).html('');
-            time.counter[row] = WAIT_TIME;
+            if(row === SEND_TIMER){time.counter[row] = MESSAGE_TIMEOUT;}
+            else{time.counter[row] = TOPIC_TIMEOUT;}
             if(ondone){ondone();}
         }
     },
@@ -257,13 +259,13 @@ var time = { // dep: document
         for (var i = 0; i < NUM_TIMERS; i++){
             if(time.inProg[i]){clearTimeout(time.inProg[i]);} // deactivate active timeouts
             $('#timer' + i).html('');                         // empty timer text
-            time.counter[i] = WAIT_TIME;                      // reset timeouts
+            time.counter[i] = TOPIC_TIMEOUT;                  // reset timeouts
         }
     },
     stopSend: function(text){
         clearTimeout(time.inProg[SEND_TIMER]);
         $('#timer' + SEND_TIMER).html(text);
-        time.counter[SEND_TIMER] = WAIT_TIME;
+        time.counter[SEND_TIMER] = MESSAGE_TIMEOUT;
     },
     from: function(whichRow, who){ // replaces time span elemement with perspective of user
         $('#timer' + whichRow).css('visibility', 'visible');
