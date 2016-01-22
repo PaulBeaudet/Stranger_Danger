@@ -1,15 +1,15 @@
 // index.js ~ Copyright 2015 Paul Beaudet ~ MIT License see LICENSE_MIT for detials
 // Constants, these can change the behavior of the application
 // Timing constants
-var MINUTE = 60000      // 60 seconds
-var EXPIRE_CHECK = 5000 // 5 seconds
-var WAIT_TIME = 30;     // time to wait for talking turn
-var TOPIC_TIME = 60;    // time for topics to show
-var NUM_ENTRIES = 6;    // number of dialog rows allowed in the application
+var MINUTE = 60000;               // 60 seconds
+var EXPIRE_CHECK = 5000;          // 5 seconds
+var EXPIRE_TIMEOUT = MINUTE * 2;  // time to expire
+var WAIT_TIME = 45;               // time to wait for talking turn
+var NUM_ENTRIES = 6;              // number of dialog rows allowed in the application
 var NUM_TIMERS = NUM_ENTRIES + 1; // timer 6 is for the send button
 // call NUM_ENTRIES for send button timer
 var SEND_TIMER = NUM_ENTRIES;
-var TIMER_TEXT_SEND = 'T -';
+var TIMER_TEXT_SEND = ': -';
 // Typing modes
 var TOPIC = 0; // users post or select topics
 var CHAT  = 1; // two users chat one on one
@@ -229,8 +229,8 @@ var inactivity = {
     check: function(){
         if(inactivity.status){ inactivity.accumalated += EXPIRE_CHECK; }
         else { inactivity.accumalated = 0; }
-        if(inactivity.accumalated > MINUTE){   // if inactivitly continues beyound threshold
-            window.location.replace('/login'); // redirect to login page
+        if(inactivity.accumalated > EXPIRE_TIMEOUT){ // if inactivitly continues beyound threshold
+            window.location.replace('/login');       // redirect to login page
         } else {
             setTimeout(inactivity.check, EXPIRE_CHECK);
         }
