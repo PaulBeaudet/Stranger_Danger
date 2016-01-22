@@ -259,7 +259,7 @@ var time = { // dep: document
         for (var i = 0; i < NUM_TIMERS; i++){
             if(time.inProg[i]){clearTimeout(time.inProg[i]);} // deactivate active timeouts
             $('#timer' + i).html('');                         // empty timer text
-            if(i === SEND_TIMER){time.counter[row] = MESSAGE_TIMEOUT;}
+            if(i === SEND_TIMER){time.counter[i] = MESSAGE_TIMEOUT;}
             else{time.counter[i] = TOPIC_TIMEOUT;}
         }
     },
