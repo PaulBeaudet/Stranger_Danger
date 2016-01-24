@@ -10,7 +10,6 @@ var NUM_ENTRIES = 6;              // number of dialog rows allowed in the applic
 var NUM_TIMERS = NUM_ENTRIES + 1; // timer 6 is for the send button
 // call NUM_ENTRIES for send button timer
 var SEND_TIMER = NUM_ENTRIES;
-var TIMER_TEXT_SEND = ': -';
 // Typing modes
 var TOPIC = 0; // users post or select topics
 var CHAT  = 1; // two users chat one on one
@@ -41,7 +40,7 @@ var edit = { // dep: time, textBar, $
         textBar.changeAction(CHAT);   // clear text box and use correct dialog
         time.from(edit.row, "other"); // write other onto the last row
         edit.increment();             // increment place to write to
-        time.countDown(SEND_TIMER, TIMER_TEXT_SEND, send.passOn);     // time out input
+        time.countDown(SEND_TIMER, 'Your turn - ', send.passOn);     // time out input
     },
     scoot: function(){
         for(var i = 2; i < NUM_ENTRIES; i++){
@@ -82,7 +81,7 @@ var change = { // dep: send, time, textBar
         if(data.first){
             send.mode = CHAT;
             time.from(1, "You");
-            time.countDown(SEND_TIMER, TIMER_TEXT_SEND, send.passOn); // time out input
+            time.countDown(SEND_TIMER, 'Your turn - ', send.passOn); // time out input
         } else {
             send.mode = BLOCK;
             time.from(1, "other");
@@ -168,7 +167,7 @@ var send = { // dep: sock, change, edit, textBar
             if(send.empty){
                 send.empty = false;
                 time.counter[SEND_TIMER] = MESSAGE_TIMEOUT - 1; // note: Make sure post sent before timeout on other client
-                time.countDown(SEND_TIMER, TIMER_TEXT_SEND, send.create);
+                time.countDown(SEND_TIMER, 'Type topic -', send.create);
                 // this is where breakers will start being timed
             }
         }else if(send.mode === CHAT){
@@ -184,7 +183,7 @@ var send = { // dep: sock, change, edit, textBar
         time.stopSend(MESSAGE_TIMEOUT);  // in case this was called by passOn
         send.mode = BLOCK;               // block input till time to live is over
         textBar.changeAction(BLOCK);     // display notice of block
-        time.countDown(SEND_TIMER, TIMER_TEXT_SEND, function(){
+        time.countDown(SEND_TIMER, 'Wait - ', function(){
             time.stopSend("");           // reset timer
             send.empty = true;           // text is now empty
             send.mode = TOPIC;           // set so topics can be made again
