@@ -256,6 +256,7 @@ var mongo = { // depends on: mongoose
         var user = new mongo.user({
             email: req.body.email,
             password: mongo.hash.hashSync(req.body.password, mongo.hash.genSaltSync(10)),
+            acountType: 'free', // default acount type
         });
         user.save(function(err){
             if(err){console.log(err + '-mongo.signup'); }
@@ -277,7 +278,7 @@ var mongo = { // depends on: mongoose
             if(req.session && req.session.user){
                 mongo.user.findOne({email: req.session.user.email}, function(err, user){
                     if(user){
-                        res.render(render);
+                        res.render(render, {accountType: user.accountType});
                     } else {
                         req.session.reset();
                         res.redirect('/#signup');
