@@ -4,11 +4,13 @@ extends ./header.jade
 block content
     // Informational row
     .row
-        .col-xs-8.text-center
+        .col-xs-3.text-center
+            h3.text-center Account: #{accountType}
+        .col-xs-6.text-center
             h3#info.text-center
-        .col-xs-4.text-center
-            h3.text-center #{accountType}
-    // chat Ice Breaker list
+        .col-xs-3.text-center
+            a.btn.btn-lg.btn-danger(href='/login') Quit
+    // chat/topic rows
     .row
         .col-xs-12
             table.table.table-hover.table-striped
