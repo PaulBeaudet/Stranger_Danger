@@ -242,7 +242,7 @@ var mongo = { // depends on: mongoose
             subscribed: [Number],                  // topic ids user is subscribed to
             subIDs: [String],                       // IDs of subscriptions (objectId of topic)
             toSub: { type: Number, default: 0 },   // search possition for subscription (w/user)
-            acountType: { type: String },          // temp, premium, moderator, admin, ect
+            accountType: { type: String },          // temp, premium, moderator, admin, ect
         }));
         mongo.topic = mongo.db.model('topic', new Schema({
             id: ObjectId,
@@ -256,7 +256,7 @@ var mongo = { // depends on: mongoose
         var user = new mongo.user({
             email: req.body.email,
             password: mongo.hash.hashSync(req.body.password, mongo.hash.genSaltSync(10)),
-            acountType: 'free', // default acount type
+            accountType: 'free', // default acount type
         });
         user.save(function(err){
             if(err){console.log(err + '-mongo.signup'); }
