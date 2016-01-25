@@ -299,7 +299,7 @@ var time = { // dep: document
 // Bottom of page text bar footer object
 var textBar = { // dep: $
     changeAction: function(mode){
-        var typed = $('#textEntry').length();
+        var typed = $('#textEntry').val().length();
         if(mode === TOPIC){
             $('#sendText').html('Make Topic ');
             $('#textEntry').val('');
