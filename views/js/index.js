@@ -83,7 +83,7 @@ var change = { // dep: send, time, textBar
         if(data.first){
             send.mode = CHAT;
             time.from(1, "You");
-            time.countDown(SEND_TIMER, 'Your turn', send.passOn); // time out input
+            time.countDown(SEND_TIMER, 'Your turn - ', send.passOn); // time out input
         } else {
             send.mode = BLOCK;
             time.from(1, "other");
@@ -168,9 +168,9 @@ var send = { // dep: sock, change, edit, textBar
     input: function(){
         if(send.mode === TOPIC){
             if(send.empty){
-                send.empty = false;                                           // note no longer empty so this occurs once
-                time.counter[SEND_TIMER] = MESSAGE_TIMEOUT;                   // Set timeout amount
-                time.countDown(SEND_TIMER, 'Type topic', send.create);        // time topic creation
+                send.empty = false;                                       // so this occurs once
+                time.counter[SEND_TIMER] = MESSAGE_TIMEOUT;               // Set timeout amount
+                time.countDown(SEND_TIMER, 'Type topic - ', send.create); // time topic creation
             }
         }else if(send.mode === CHAT){
             if(send.empty){
@@ -206,11 +206,13 @@ var speed = {
         return cpm / WORD;
     },
     stopWatch: function (keysPressed){
-        var date = new Date();                                               // current time
-        if (keysPressed){                                                    // argument stops watch
-            return speed.kpm(date.getTime() - speed.startTime, keysPressed); // return speed recording
-        } else {                                                             // no arguments starts watch
-            speed.startTime = date.getTime();                                // ms from epoch format
+        var date = new Date();                                  // current time
+        if (keysPressed){                                       // argument stops watch
+            var timeElapsed = date.getTime() - speed.startTime; // figure time elapsed
+            var rpm = speed.kpm(timeElapsed, keysPressed);      // return speed recording
+            return rpm.toFixed(2);                              // fix rpm to two decimal places
+        } else {                                                // no arguments starts watch
+            speed.startTime = date.getTime();                   // ms from epoch format
             return false;
         }
     }
