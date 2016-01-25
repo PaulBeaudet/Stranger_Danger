@@ -1,8 +1,10 @@
 // index.js ~ Copyright 2015 Paul Beaudet ~ MIT License see LICENSE_MIT for detials
 // Constants, these can change the behavior of the application
 // Timing constants
-var MINUTE = 60000;               // 60 seconds
-var EXPIRE_CHECK = 5000;          // 5 seconds
+var MINUTE = 60000;               // Milliseconds in a minute
+var SECOND = 1000                 // MILLISECONDS in a second
+var WORD = 5                      // Characters per averange word
+var EXPIRE_CHECK = SECOND * 5;    // time to check session activity
 var EXPIRE_TIMEOUT = MINUTE * 2;  // time to expire
 var TOPIC_TIMEOUT = 30;           // timeout for topics
 var MESSAGE_TIMEOUT = 45;         // timeout for messages
@@ -81,7 +83,7 @@ var change = { // dep: send, time, textBar
         if(data.first){
             send.mode = CHAT;
             time.from(1, "You");
-            time.countDown(SEND_TIMER, 'Your turn - ', send.passOn); // time out input
+            time.countDown(SEND_TIMER, 'Your turn', send.passOn); // time out input
         } else {
             send.mode = BLOCK;
             time.from(1, "other");
@@ -145,18 +147,19 @@ var send = { // dep: sock, change, edit, textBar
         if(send.mode === TOPIC || send.mode === CHAT){if(event.which === 13){send.passOn();}}
     },
     passOn: function(){
-        if(send.mode === TOPIC){
-            send.create(); // start ttl timer, shows time topics have to live in send timer
-        } else if (send.mode === CHAT){
-            if(send.empty){
-                sock.et.emit('endChat', send.to);
-                change.toHome();     // trasition back to home screen
-            } else {
-                sock.et.emit('toOther', send.to);
-                edit.increment();            // increase row number to edit
-                send.mode = BLOCK;           // block user till other responds
-                textBar.changeAction(BLOCK); // show wait notice
-                time.stopSend("");           // stop the clock from running anymore
+        if(send.mode === TOPIC){                           // if on topic screen
+            send.create();                                 // create a topic
+        } else if (send.mode === CHAT){                    // if on chat screen
+            if(send.empty){                                // given no entry
+                sock.et.emit('endChat', send.to);          // signal chat is done
+                change.toHome();                           // trasition back to home screen
+            } else {                                       // given something was entered
+                sock.et.emit('toOther', send.to);          // pass "batton" to other person
+                edit.increment();                          // increase row number to edit
+                send.mode = BLOCK;                         // block user till other responds
+                var printed = textBar.changeAction(BLOCK); // show wait notice
+                var rpm = speed.stopWatch(printed);        // get word rate per minute
+                time.stopSend(rpm + 'RPM');                // stop the clock from running anymore
             }
         }
         inactivity.status = false; // note activity
@@ -165,30 +168,51 @@ var send = { // dep: sock, change, edit, textBar
     input: function(){
         if(send.mode === TOPIC){
             if(send.empty){
-                send.empty = false;
-                time.counter[SEND_TIMER] = MESSAGE_TIMEOUT - 1; // note: Make sure post sent before timeout on other client
-                time.countDown(SEND_TIMER, 'Type topic -', send.create);
-                // this is where breakers will start being timed
+                send.empty = false;                                           // note no longer empty so this occurs once
+                time.counter[SEND_TIMER] = MESSAGE_TIMEOUT;                   // Set timeout amount
+                time.countDown(SEND_TIMER, 'Type topic', send.create);        // time topic creation
             }
         }else if(send.mode === CHAT){
-            if(send.empty){edit.onStart(); send.empty = false;} // account for nessisary changeitions
-            edit.type({text: $('#textEntry').val(), row: 0});     // print on own screen
+            if(send.empty){
+                speed.stopWatch();  // start wpm stopwatch
+                edit.onStart();     // edit.onstart once
+                send.empty = false;
+            }
+            edit.type({text: $('#textEntry').val(), row: 0});                 // print on own screen
             sock.et.emit("chat", {text: $('#textEntry').val(), id: send.to}); // send to other user
-        } // block more input from happening, leaving last sent message in box
-        else if(send.mode === BLOCK){ $('#textEntry').val(''); }
-        inactivity.status = false; // note activity
+        }
+        else if(send.mode === BLOCK){ $('#textEntry').val(''); }              // Block input in this case
+        inactivity.status = false;                                            // note activity is occuring
     },
-    create: function(){ // called when topic composition is complete
+    create: function(){                                // called when topic composition is complete
         sock.et.emit('create', $('#textEntry').val()); // Signal to the server that composition of topic is done
-        time.stopSend(MESSAGE_TIMEOUT);  // in case this was called by passOn
-        send.mode = BLOCK;               // block input till time to live is over
-        textBar.changeAction(BLOCK);     // display notice of block
+        time.stopSend(MESSAGE_TIMEOUT);                // in case this was called by passOn
+        send.mode = BLOCK;                             // block input till time to live is over
+        textBar.changeAction(BLOCK);                   // display notice of block
         time.countDown(SEND_TIMER, 'Wait - ', function(){
             time.stopSend("");           // reset timer
             send.empty = true;           // text is now empty
             send.mode = TOPIC;           // set so topics can be made again
             textBar.changeAction(TOPIC); // display notice that topics can be made again
         });
+    }
+}
+
+var speed = {
+    startTime: 0,
+    kpm: function (totalTime, keysPressed){
+        var rate = totalTime / keysPressed; // average time taken per letter
+        var cpm = MINUTE / rate;            // clicks/characters per minute
+        return cpm / WORD;
+    },
+    stopWatch: function (keysPressed){
+        var date = new Date();                                               // current time
+        if (keysPressed){                                                    // argument stops watch
+            return speed.kpm(date.getTime() - speed.startTime, keysPressed); // return speed recording
+        } else {                                                             // no arguments starts watch
+            speed.startTime = date.getTime();                                // ms from epoch format
+            return false;
+        }
     }
 }
 
@@ -202,7 +226,6 @@ var sock = {  // dep: sockets.io, topic, change, edit, send
         sock.et.on('toMe', edit.type);         // recieve Real Time Text
         sock.et.on('yourTurn', edit.myTurn);   // signals when it is this clients turn to type
         sock.et.on('endChat', change.toHome);  // switch back to default appearence
-
         sock.et.on('redirect', window.location.replace); // redirect to desired page
     }
 }
@@ -276,6 +299,7 @@ var time = { // dep: document
 // Bottom of page text bar footer object
 var textBar = { // dep: $
     changeAction: function(mode){
+        var typed = $('#textEntry').length();
         if(mode === TOPIC){
             $('#sendText').html('Make Topic ');
             $('#textEntry').val('');
@@ -285,6 +309,7 @@ var textBar = { // dep: $
         } else if ( mode === BLOCK){
             $('#sendText').html('Wait ');
         }
+        return typed;
     }
 }
 
