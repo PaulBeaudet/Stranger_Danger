@@ -2,8 +2,9 @@
 // Constants, these can change the behavior of the application
 // Timing constants
 var MINUTE = 60000;               // Milliseconds in a minute
-var SECOND = 1000                 // MILLISECONDS in a second
-var WORD = 5                      // Characters per averange word
+var SECOND = 1000;                // MILLISECONDS in a second
+var WORD = 5;                     // Characters per averange word
+var AVG_DURRATION = 5;            // Amount of speed entries accepted before averanging
 var EXPIRE_CHECK = SECOND * 5;    // time to check session activity
 var EXPIRE_TIMEOUT = MINUTE * 2;  // time to expire
 var TOPIC_TIMEOUT = 30;           // timeout for topics
@@ -159,7 +160,7 @@ var send = { // dep: sock, change, edit, textBar
                 send.mode = BLOCK;                         // block user till other responds
                 var printed = textBar.changeAction(BLOCK); // show wait notice
                 var rpm = speed.stopWatch(printed);        // get word rate per minute
-                time.stopSend(rpm + 'RPM');                // stop the clock from running anymore
+                time.stopSend(rpm + '~WPM');               // stop the clock from running anymore
             }
         }
         inactivity.status = false; // note activity
@@ -198,23 +199,44 @@ var send = { // dep: sock, change, edit, textBar
     }
 }
 
+// -- handles gathing speed information
 var speed = {
     startTime: 0,
+    records: [],
     kpm: function (totalTime, keysPressed){
         var rate = totalTime / keysPressed; // average time taken per letter
         var cpm = MINUTE / rate;            // clicks/characters per minute
         return cpm / WORD;
     },
     stopWatch: function (keysPressed){
-        var date = new Date();                                  // current time
-        if (keysPressed){                                       // argument stops watch
-            var timeElapsed = date.getTime() - speed.startTime; // figure time elapsed
-            var rpm = speed.kpm(timeElapsed, keysPressed);      // return speed recording
-            return rpm.toFixed(2);                              // fix rpm to two decimal places
-        } else {                                                // no arguments starts watch
-            speed.startTime = date.getTime();                   // ms from epoch format
+        var date = new Date();                                          // current time
+        if (keysPressed){                                               // argument stops watch
+            var timeElapsed = date.getTime() - speed.startTime;         // figure time elapsed
+            var rpm = speed.kpm(timeElapsed, keysPressed).toFixed(2);   // return speed recording
+            speed.records.push(rpm);                                    // push latest entry
+            if (speed.records.length > AVG_DURRATION){
+                console.log('updating speed');
+                sock.et.emit('speed', speed.average());                 // pass average to server
+            }
+            return rpm;                                                 // return rate per minute, to two deicmal places
+        } else {                                                        // no arguments starts watch
+            speed.startTime = date.getTime();                           // ms from epoch format
             return false;
         }
+    },
+    average: function(){                                // simplify speed records to one averaged element
+        if(speed.records.length > 1){                   // given there is more than one element
+            var sum = 0;
+            for(var i = 0; speed.records.length; i++){  // for each element
+                sum += speed.records[i];                // add to sum
+            }
+            speed.records = [sum/speed.records.length]; // replace w/ one element array of average
+        }
+        return speed.records[0].toFixed(2);             // return current recording or average
+    },
+    start: function(lastSpeed){
+        if(lastSpeed){speed.records.push(lastSpeed);}
+        console.log('updated speed:' + lastSpeed);
     }
 }
 
@@ -229,6 +251,7 @@ var sock = {  // dep: sockets.io, topic, change, edit, send
         sock.et.on('yourTurn', edit.myTurn);   // signals when it is this clients turn to type
         sock.et.on('endChat', change.toHome);  // switch back to default appearence
         sock.et.on('redirect', window.location.replace); // redirect to desired page
+        sock.et.on('speed', speed.start);      // start speed clock
     }
 }
 

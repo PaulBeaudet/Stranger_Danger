@@ -41,7 +41,10 @@ var userDB = { // requires mongo and topic
     temp: [],  // in ram user data
     logout: function(ID){
         var userNum = userDB.grabIndex(ID.socket);
-        var dataUpdate = {subscribed: userDB.temp[userNum].sub, toSub: userDB.temp[userNum].toSub, subIDs: userDB.temp[userNum].subIDs}
+        var dataUpdate = { subscribed: userDB.temp[userNum].sub,
+                           toSub: userDB.temp[userNum].toSub,
+                           subIDs: userDB.temp[userNum].subIDs,
+                           avgSpeed: userDB.temp[userNum].speed };
         mongo.user.findOneAndUpdate({email: ID.email}, dataUpdate, function(err, doc){
             if(err){ console.log(err + '-userDB.logout');
             } else if (doc){ // save users session information when their socket disconects
@@ -52,15 +55,16 @@ var userDB = { // requires mongo and topic
     grabIndex: function(socket){return userDB.temp.map(function(each){return each.socket;}).indexOf(socket);},
     checkIn: function(ID) {          // create temporary persistence entry for online users
         mongo.user.findOne({email: ID.email}, function(err, doc){
-            if(err){ console.log(err + '-userDB.checkin');    // users must be signed up
+            if(err){ console.log(err + '-userDB.checkin');      // users must be signed up
             } else if (doc){
-                userDB.temp.push({                            // toMatch & Sub default to 0
-                    user: ID.email,       socket: ID.socket,  // known details
-                    sub: doc.subscribed,  toSub: doc.toSub,   // persistant details
-                    subIDs: doc.subIDs,                       // IDs of subscriptions
-                    toMatch: 0, timer: 0                      // temp details
+                userDB.temp.push({                              // toMatch & Sub default to 0
+                    user: ID.email,      socket: ID.socket,     // known details
+                    sub: doc.subscribed, toSub: doc.toSub,      // persistant details
+                    subIDs: doc.subIDs,  speed: doc.avgSpeed,   // IDs of subscriptions
+                    toMatch: 0,          timer: 0               // temp details
                 });
-                topic.get(ID.socket, true);                   // get topic AFTER db quary
+                topic.get(ID.socket, true);                     // get topic AFTER db quary
+                sock.io.to(ID.socket).emit('speed', doc.avgSpeed); // give client last speed
             }
         });
     },
@@ -76,6 +80,10 @@ var userDB = { // requires mongo and topic
                 }   // other wise we are resubbing user to feed
             }
         }
+    },
+    speed: function(socket, avg){
+        var userNum = userDB.grabIndex(socket);
+        userDB.temp[userNum].speed = avg;
     }
 }
 
@@ -214,10 +222,10 @@ var sock = { // depends on socket.io, reaction, and topic
                     userDB.toggle([id, socket.id]);
                     sock.io.to(id).emit('endChat'); // tell the user they are talking with that chat is over
                 });
-                // ----- disconnect event -------
-                socket.on('disconnect', function (){
-                    userDB.logout({email: email, socket: socket.id}); // log out based on unique connection ID
-                });
+                // -- speed reporting --
+                socket.on('speed', function(avg){userDB.speed(socket.id, avg);});
+                // -- disconnect event -------
+                socket.on('disconnect', function(){userDB.logout({email: email, socket: socket.id});});
             } else { // cookie expiration event
                 sock.io.to(socket.id).emit('redirect', '/login'); // point the client to login page to get a valid cookie
             }
@@ -239,10 +247,11 @@ var mongo = { // depends on: mongoose
             id: ObjectId,
             email: { type: String, required: '{PATH} is required', unique: true },
             password: { type: String, required: '{PATH} is required' },
-            subscribed: [Number],                  // topic ids user is subscribed to
+            subscribed: [Number],                   // topic ids user is subscribed to
             subIDs: [String],                       // IDs of subscriptions (objectId of topic)
-            toSub: { type: Number, default: 0 },   // search possition for subscription (w/user)
+            toSub: { type: Number, default: 0 },    // search possition for subscription (w/user)
             accountType: { type: String },          // temp, premium, moderator, admin, ect
+            avgSpeed: { type: Number, default: 0},  // averaged out speed of user
         }));
         mongo.topic = mongo.db.model('topic', new Schema({
             id: ObjectId,
