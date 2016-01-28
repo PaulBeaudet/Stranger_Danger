@@ -227,7 +227,7 @@ var speed = {
     average: function(){                                // simplify speed records to one averaged element
         if(speed.records.length > 1){                   // given there is more than one element
             var sum = 0;
-            for(var i = 0; speed.records.length; i++){  // for each element
+            for(var i = 0; i < speed.records.length; i++){  // for each element
                 sum += speed.records[i];                // add to sum
             }
             speed.records = [sum/speed.records.length]; // replace w/ one element array of average

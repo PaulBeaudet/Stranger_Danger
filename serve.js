@@ -109,7 +109,6 @@ var topic = { // depends on: userDB and topicDB
             else{userDB.temp[userNum].toSub = 0;}                                               // set back to zero if reached end
             for( var i = 0; userDB.temp[userNum].sub[i] !== undefined; i++ ){                   // for every user sub
                 if(userDB.temp[userNum].toSub === userDB.temp[userNum].sub[i]){                 // if matches topic, avoid
-                    console.log('already have');
                     process.nextTick(function(){topic.propose(socket);});                       // try again on next tick
                     return;                                                                     // don't propose
                 }
