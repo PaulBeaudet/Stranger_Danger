@@ -105,12 +105,13 @@ var topic = { // depends on: userDB and topicDB
     propose: function(socket){
         var userNum = userDB.grabIndex(socket);
         if(userNum > -1){
-            userDB.temp[userNum].toSub++;                                                           // increment
-            if(userDB.temp[userNum].toSub === topicDB.temp.length){userDB.temp[userNum].toSub = 0;} // set back to zero if reached end
-            for( var i = 0; userDB.temp[userNum].sub[i] !== undefined; i++ ){                       // for every sub
-                if(userDB.temp[userNum].toSub === userDB.temp[userNum].sub[i]){                     // if matches topic, avoid
-                    process.nextTick(function(){topic.propose(socket);});                           // try again on next tick
-                    return;                                                                         // don't propose
+            if(userDB.temp[userNum].toSub < topicDB.temp.length){userDB.temp[userNum].toSub++;} // increment
+            else{userDB.temp[userNum].toSub = 0;}                                               // set back to zero if reached end
+            for( var i = 0; userDB.temp[userNum].sub[i] !== undefined; i++ ){                   // for every user sub
+                if(userDB.temp[userNum].toSub === userDB.temp[userNum].sub[i]){                 // if matches topic, avoid
+                    console.log('already have');
+                    process.nextTick(function(){topic.propose(socket);});                       // try again on next tick
+                    return;                                                                     // don't propose
                 }
             } // else user is not subscribbed to this topic, propose it to them
             if(topicDB.temp[userDB.temp[userNum].toSub]){
