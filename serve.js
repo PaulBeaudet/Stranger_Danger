@@ -81,10 +81,7 @@ var userDB = { // requires mongo and topic
             }
         }
     },
-    speed: function(socket, avg){
-        var userNum = userDB.grabIndex(socket);
-        userDB.temp[userNum].speed = avg;
-    }
+    speed: function(socket, avg){userDB.temp[userDB.grabIndex(socket)].speed = avg;}
 }
 
 // distribute topics: does two things- proposes topics and matches users based on topics

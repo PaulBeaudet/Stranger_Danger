@@ -209,35 +209,26 @@ var speed = {
         return cpm / WORD;
     },
     stopWatch: function (keysPressed){
-        var date = new Date();                                          // current time
-        if (keysPressed){                                               // argument stops watch
-            var timeElapsed = date.getTime() - speed.startTime;         // figure time elapsed
-            var rpm = speed.kpm(timeElapsed, keysPressed).toFixed(2);   // return speed recording
-            speed.records.push(rpm);                                    // push latest entry
-            if (speed.records.length > AVG_DURRATION){
-                console.log('updating speed');
-                sock.et.emit('speed', speed.average());                 // pass average to server
-            }
-            return rpm;                                                 // return rate per minute, to two deicmal places
-        } else {                                                        // no arguments starts watch
-            speed.startTime = date.getTime();                           // ms from epoch format
-            return false;
-        }
+        var date = new Date();                                  // current time
+        if (keysPressed){                                       // argument stops watch
+            var timeElapsed = date.getTime() - speed.startTime; // figure time elapsed
+            var rpm = speed.kpm(timeElapsed, keysPressed);      // return speed recording
+            speed.records.push(rpm);                            // push latest entry
+            if(speed.records.length > AVG_DURRATION){sock.et.emit('speed', speed.average());} // update server with speed
+            return rpm.toFixed(2);                              // return rate per minute, to two deicmal places
+        }                                                       // no arguments starts watch
+        speed.startTime = date.getTime();                       // ms from epoch format
+        return false;                                           // false signifys watch start
     },
-    average: function(){                                // simplify speed records to one averaged element
-        if(speed.records.length > 1){                   // given there is more than one element
+    average: function(){                                        // simplify speed records to one averaged element
+        if(speed.records.length > 1){                           // given there is more than one element
             var sum = 0;
-            for(var i = 0; i < speed.records.length; i++){  // for each element
-                sum += speed.records[i];                // add to sum
-            }
-            speed.records = [sum/speed.records.length]; // replace w/ one element array of average
+            for(var i = 0; i < speed.records.length; i++){ sum += speed.records[i]; }  // for each element add to sum
+            speed.records = [sum/speed.records.length];         // replace w/ one element array of average
         }
-        return speed.records[0].toFixed(2);             // return current recording or average
+        return speed.records[0];                                // return current recording or average
     },
-    start: function(lastSpeed){
-        if(lastSpeed){speed.records.push(lastSpeed);}
-        console.log('updated speed:' + lastSpeed);
-    }
+    start: function(lastSpeed){if(lastSpeed){speed.records.push(lastSpeed);}}
 }
 
 // -- socket handler
