@@ -5,6 +5,9 @@
 const WAIT_TIME  = 30;                            // time topic displayed
 const NUM_ENTRIES = 6;                            // number of dialog rows allowed client side
 const FREQUENCY = WAIT_TIME * 1000 / NUM_ENTRIES; // frequency of topic send out
+// temp options
+const DEFAULT_SUB = [1,2,3];                      // defualt subscriptions for temp users
+const DEFAULT_SUBIDS = false;
 
 // abstract persistent and temporary topic data
 var topicDB = {                                        // depends on mongo
@@ -19,20 +22,23 @@ var topicDB = {                                        // depends on mongo
         });
     },
     onCreate: function(text, ID){
-        var userNum = userDB.grabIndex(ID.socket);
-        var doc = new mongo.topic({text: text});       // grab a schema for a new document
-        mongo.topic.count().exec(function(err, count){ // find out which topic this will be
-            doc.index = count;                         // add unique count property to document
-            doc.author = ID.email;                     // note the author of the topic
-            var objectID = doc._id;
-            doc.save(function(err){                    // write new topic to database
-                if(err){console.log(err + ' onCreate');}
-                else {
-                    topicDB.temp.push(text);           // also add topic in temorary array
-                    userDB.temp[userNum].subIDs.push(objectID); // add to this user subscriptions
-                }
-            });                                        // TODO subscribe user to topic (return count ID of topic)
-        });
+        if(ID.email){                                      // given this is an official user
+            var doc = new mongo.topic({text: text});       // grab a schema for a new document
+            mongo.topic.count().exec(function(err, count){ // find out which topic this will be
+                doc.index = count;                         // add unique count property to document
+                doc.author = ID.email;                     // note the author of the topic
+                var objectID = doc._id;
+                doc.save(function(err){                    // write new topic to database
+                    if(err){console.log(err + ' onCreate');}
+                    else {
+                        var userNum = userDB.grabIndex(ID.socket);  // not the index number of this user
+                        topicDB.temp.push(text);                    // also add topic in temorary array
+                        userDB.temp[userNum].subIDs.push(objectID); // add to cached user subscriptions
+                        userDB.temp[userNum].sub.push(count)        // add to cached user subscriptions
+                    }
+                });
+            });
+        }
     },
 }
 
@@ -40,33 +46,44 @@ var topicDB = {                                        // depends on mongo
 var userDB = { // requires mongo and topic
     temp: [],  // in ram user data
     logout: function(ID){
-        var userNum = userDB.grabIndex(ID.socket);
-        var dataUpdate = { subscribed: userDB.temp[userNum].sub,
-                           toSub: userDB.temp[userNum].toSub,
-                           subIDs: userDB.temp[userNum].subIDs,
-                           avgSpeed: userDB.temp[userNum].speed };
-        mongo.user.findOneAndUpdate({email: ID.email}, dataUpdate, function(err, doc){
-            if(err){ console.log(err + '-userDB.logout');
-            } else if (doc){ // save users session information when their socket disconects
-                userDB.temp.splice(userDB.grabIndex(ID.socket), 1);
-            }
-        })
+        if(ID.email){
+            var userNum = userDB.grabIndex(ID.socket);
+            var dataUpdate = { subscribed: userDB.temp[userNum].sub,
+                               toSub: userDB.temp[userNum].toSub,
+                               subIDs: userDB.temp[userNum].subIDs,
+                               avgSpeed: userDB.temp[userNum].speed };
+            mongo.user.findOneAndUpdate({email: ID.email}, dataUpdate, function(err, doc){
+                if(err){ console.log(err + '-userDB.logout');
+                } else if (doc){ // save users session information when their socket disconects
+                    userDB.temp.splice(userDB.grabIndex(ID.socket), 1);
+                }
+            })
+        }
     },
     grabIndex: function(socket){return userDB.temp.map(function(each){return each.socket;}).indexOf(socket);},
     checkIn: function(ID) {          // create temporary persistence entry for online users
         mongo.user.findOne({email: ID.email}, function(err, doc){
-            if(err){ console.log(err + '-userDB.checkin');      // users must be signed up
+            if(err){ console.log(err + '-userDB.checkin');         // users must be signed up
             } else if (doc){
-                userDB.temp.push({                              // toMatch & Sub default to 0
-                    user: ID.email,      socket: ID.socket,     // known details
-                    sub: doc.subscribed, toSub: doc.toSub,      // persistant details
-                    subIDs: doc.subIDs,  speed: doc.avgSpeed,   // IDs of subscriptions
-                    toMatch: 0,          timer: 0               // temp details
+                userDB.temp.push({                                 // toMatch & Sub default to 0
+                    socket: ID.socket,   toSub: doc.toSub,         // known details
+                    sub: doc.subscribed, subIDs: doc.subIDs,       // persistant details
+                    toMatch: 0,          timer: 0,                 // temp details
+                    speed: doc.avgSpeed,                           // IDs of subscriptions
                 });
-                topic.get(ID.socket, true);                     // get topic AFTER db quary
+                topic.get(ID.socket, true);                        // get topic AFTER db quary
                 sock.io.to(ID.socket).emit('speed', doc.avgSpeed); // give client last speed
             }
         });
+    },
+    fake: function(socketID){
+        userDB.temp.push({
+            socket: socketID, sub: DEFAULT_SUB,
+            toSub: 0,         subIDs: DEFAULT_SUBIDS,
+            speed: 0,         toMatch: 0,
+            timer: 0,
+        });
+        topic.get(socketID, true);                     // get topic AFTER db quary
     },
     toggle: function(socket){ // stop topic.get NOTE: takes an array of sockets normally [two, sockets]
         for(var i=0; socket[i]; i++){
@@ -147,7 +164,8 @@ var match = { // depends on: userDB, topic, topicDB
             }
         } else { return;} // given no topic we have nothing further todo
         if(targetNum){    // so long as target id greater than being first user
-            process.nextTick(function (){match.topic(socket, topic.db[targetNum-1].user);});
+            process.nextTick(function (){match.topic(socket, topic.db[targetNum-1].user);}); // TODO: WTF?
+            //return;
         } else {                            // If we got to first user, loop back up to imediate previous user
             userDB.temp[userNum].toMatch++; // change what is being searched for to match
             if(userDB.temp[userNum].sub[userDB.temp[userNum].toMatch]){ // if this user has an interest in this slot
@@ -160,17 +178,19 @@ var match = { // depends on: userDB, topic, topicDB
 // determines how sockets react to changes
 var reaction = { // depends on topic
     onConnect: function(socket){ // returns unique id to hold in closure for socket.on events
-        var email = 0;
-        if(socket.request.headers.cookie){                              // if cookie exist
-            var cookieCrums = socket.request.headers.cookie.split('='); // split correct cookie out
-            email = cookie.email(cookieCrums[cookieCrums.length - 1]);  // decrypt email from cookie, make it userID
-            if(email){                                                  // make sure something came through
-                userDB.checkIn({email:email, socket:socket.id});
-            } // deal with something not coming through in socket object
+        var usrInfo = false;
+        if(socket.request.headers.cookie){                               // if cookie exist
+            var cookieCrums = socket.request.headers.cookie.split('=');  // split correct cookie out
+            usrInfo = cookie.user(cookieCrums[cookieCrums.length - 1]);  // decrypt email from cookie, make it userID
+            if(usrInfo.accountType === 'temp'){                          // check if this is a temp user
+                userDB.fake(socket.id);                                  // temp user creation
+            } else if (usrInfo.email){                                   // given an assosiated email
+                userDB.checkIn({email:usrInfo.email, socket:socket.id}); // Create real user
+            }
         }
-        return email; // return to socket onconnect event to hold ID in closure for user events
+        return {email: usrInfo.email, type: usrInfo.accountType};
     },
-    toSub: function(socket, topicID, email){
+    toSub: function(socket, topicID){
         var userID = userDB.grabIndex(socket);
         userDB.temp[userID].sub.push(topicID);
     },
@@ -198,12 +218,12 @@ var sock = { // depends on socket.io, reaction, and topic
     io: require('socket.io'),
     listen: function (server){
         sock.io = sock.io(server);
-        sock.io.on('connection', function(socket){   // whenever a new user is connected
-            var email = reaction.onConnect(socket); // email = unique key for user found in session cookie
-            if(email){
+        sock.io.on('connection', function(socket){     // whenever a new user is connected
+            var userInfo = reaction.onConnect(socket); // returns potential user information in session cookie
+            if(userInfo.type){
                 // ------ Creating topics ---------
-                socket.on('create', function(text){topicDB.onCreate(text, {email: email, socket: socket.id});});
-                socket.on('sub', function(topicID){reaction.toSub(socket.id, topicID, email);});
+                socket.on('create', function(text){topicDB.onCreate(text, {email: userInfo.email, socket: socket.id});});
+                socket.on('sub', function(topicID){reaction.toSub(socket.id, topicID);});
                 socket.on('initTopic', function(matchID){ // will be called by both clients at zero time out
                     if(sock.io.sockets.connected[matchID]){
                         if(reaction.timeToTalk(socket.id, matchID)){ // once both sockets check in
@@ -222,7 +242,7 @@ var sock = { // depends on socket.io, reaction, and topic
                 // -- speed reporting --
                 socket.on('speed', function(avg){userDB.speed(socket.id, avg);});
                 // -- disconnect event -------
-                socket.on('disconnect', function(){userDB.logout({email: email, socket: socket.id});});
+                socket.on('disconnect', function(){userDB.logout({email: userInfo.email, socket: socket.id});});
             } else { // cookie expiration event
                 sock.io.to(socket.id).emit('redirect', '/login'); // point the client to login page to get a valid cookie
             }
@@ -258,24 +278,12 @@ var mongo = { // depends on: mongoose
         }));
         topicDB.init(0);                            // pull global topics into ram
     },
-    signup: function(req, res){
-        var user = new mongo.user({
-            email: req.body.email,
-            password: mongo.hash.hashSync(req.body.password, mongo.hash.genSaltSync(10)),
-            accountType: 'free', // default acount type
-        });
-        user.save(function(err){
-            if(err){console.log(err + '-mongo.signup'); }
-            else { res.redirect('/login');}
-        });
-    },
     login: function ( req, res ){
         mongo.user.findOne({email: req.body.email}, function(err, user){
             if(user && mongo.hash.compareSync(req.body.password, user.password)){
-                req.user = user;
-                delete req.user.password;
-                req.session.user = user; //
-                res.redirect('/topic');
+                user.password = ':-p';    // Hide hashed password
+                req.session.user = user;  // All user data is stored in this cookie
+                res.redirect('/topic');   // redirect to activity window
             } else {res.redirect('/#signup');}
         });
     },
@@ -283,15 +291,33 @@ var mongo = { // depends on: mongoose
         return function(req, res){
             if(req.session && req.session.user){
                 mongo.user.findOne({email: req.session.user.email}, function(err, user){
-                    if(user){
-                        res.render(render, {accountType: user.accountType});
+                    if(user){                                                // if this is valid user data
+                        res.render(render, {accountType: user.accountType}); // render page for this account
                     } else {
                         req.session.reset();
                         res.redirect('/#signup');
                     }
                 });
-            } else {res.redirect('/#signup');}
+            } else { // given there is no session user, make one with a temp account
+                req.session.user = {accountType: 'temp'};
+                res.render(render, {accountType: 'temp'});
+            }
         }
+    },
+}
+
+// actions for creating users
+var userCreate = { // dep: mongo
+    signup: function(req, res){
+        var user = new mongo.user({
+            email: req.body.email,
+            password: mongo.hash.hashSync(req.body.password, mongo.hash.genSaltSync(10)),
+            accountType: 'free', // default acount type
+        });
+        user.save(function(err){
+            if(err){console.log(err + '-userCreate.signup'); }
+            else { res.redirect('/login');}
+        });
     },
 }
 
@@ -306,10 +332,9 @@ var cookie = { // depends on client-sessions and mongo
         //secure: true,                // only allow cookies over HTTPS
     },
     meWant: function (){return cookie.session(cookie.ingredients);},
-    email: function (content){
+    user: function (content){
         var result = cookie.session.util.decode(cookie.ingredients, content);
-        if(result){result = result.content.user.email;}
-        return result;
+        return result.content.user;
     },
 }
 
@@ -331,9 +356,9 @@ var serve = { // depends on everything
         app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (sockets, jquery, bootstrap)
         var router = serve.express.Router();
         router.get('/', function ( req, res ){res.render('beta', {csrfToken: req.csrfToken()});});
-        router.post('/', mongo.signup);             // handle logins
+        router.post('/', userCreate.signup);        // handle logins
         router.get('/beta', function ( req, res ){res.render('beta', {csrfToken: req.csrfToken()});});
-        router.post('/beta', mongo.signup);         // handle sign-ups
+        router.post('/beta', userCreate.signup);    // handle sign-ups
         router.get('/about', function ( req, res ){res.render('about');});
         router.get('/login', function ( req, res ){res.render('login', {csrfToken: req.csrfToken()});});
         router.post('/login', mongo.login);         // handle logins
