@@ -277,14 +277,20 @@ var mongo = { // depends on: mongoose
             text: {type: String, unique: true}
         }));
         topicDB.init(0);                            // pull global topics into ram
-    },
-    login: function ( req, res ){
-        mongo.user.findOne({email: req.body.email}, function(err, user){
-            if(user && mongo.hash.compareSync(req.body.password, user.password)){
-                user.password = ':-p';    // Hide hashed password
-                req.session.user = user;  // All user data is stored in this cookie
-                res.redirect('/topic');   // redirect to activity window
-            } else {res.redirect('/#signup');}
+    }
+}
+
+// actions for creating users
+var userAct = { // dep: mongo
+    signup: function(req, res){
+        var user = new mongo.user({                                                       // prepare to save userdata
+            email: req.body.email,                                                        // grab email
+            password: mongo.hash.hashSync(req.body.password, mongo.hash.genSaltSync(10)), // hash password
+            accountType: 'free',                                                          // default acount type
+        });
+        user.save(function(err){                                                          // save user data (to mongo)
+            if(err){console.log(err + '-userAct.signup'); }                               // log out possible err
+            else { res.redirect('/login');}                                               // point to login after signup
         });
     },
     auth: function ( render ){
@@ -299,26 +305,20 @@ var mongo = { // depends on: mongoose
                     }
                 });
             } else { // given there is no session user, make one with a temp account
-                req.session.user = {accountType: 'temp'};
-                res.render(render, {accountType: 'temp'});
+                req.session.user = {accountType: 'temp'};  // require temp in cookie
+                res.render(render, {accountType: 'temp'}); // respond rendering with type
             }
         }
     },
-}
-
-// actions for creating users
-var userCreate = { // dep: mongo
-    signup: function(req, res){
-        var user = new mongo.user({
-            email: req.body.email,
-            password: mongo.hash.hashSync(req.body.password, mongo.hash.genSaltSync(10)),
-            accountType: 'free', // default acount type
+    login: function ( req, res ){
+        mongo.user.findOne({email: req.body.email}, function(err, user){
+            if(user && mongo.hash.compareSync(req.body.password, user.password)){
+                user.password = ':-p';         // Hide hashed password
+                req.session.user = user;       // All user data is stored in this cookie
+                res.redirect('/topic');        // redirect to activity window
+            } else {res.redirect('/#signup');} // redirect to signup if wrong password
         });
-        user.save(function(err){
-            if(err){console.log(err + '-userCreate.signup'); }
-            else { res.redirect('/login');}
-        });
-    },
+    }
 }
 
 var cookie = { // depends on client-sessions and mongo
@@ -356,17 +356,17 @@ var serve = { // depends on everything
         app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (sockets, jquery, bootstrap)
         var router = serve.express.Router();
         router.get('/', function ( req, res ){res.render('beta', {csrfToken: req.csrfToken()});});
-        router.post('/', userCreate.signup);        // handle logins
+        router.post('/', userAct.signup);             // handle logins
         router.get('/beta', function ( req, res ){res.render('beta', {csrfToken: req.csrfToken()});});
-        router.post('/beta', userCreate.signup);    // handle sign-ups
+        router.post('/beta', userAct.signup);         // handle sign-ups
         router.get('/about', function ( req, res ){res.render('about');});
         router.get('/login', function ( req, res ){res.render('login', {csrfToken: req.csrfToken()});});
-        router.post('/login', mongo.login);         // handle logins
-        router.get('/topic', mongo.auth('topic'));  // must be authenticated for this page
-        app.use(router);                            // tell app what router to use
-        topic.action = sock.emitTo;                 // assign how topics are sent
-        sock.listen(http);                          // listen for socket connections
-        http.listen(process.env.PORT);              // listen on specified PORT enviornment variable
+        router.post('/login', userAct.login);         // handle logins
+        router.get('/topic', userAct.auth('topic'));  // must be authenticated for this page
+        app.use(router);                              // tell app what router to use
+        topic.action = sock.emitTo;                   // assign how topics are sent
+        sock.listen(http);                            // listen for socket connections
+        http.listen(process.env.PORT);                // listen on specified PORT enviornment variable
     }
 }
 
