@@ -6,7 +6,7 @@ const WAIT_TIME  = 30;                            // time topic displayed
 const NUM_ENTRIES = 6;                            // number of dialog rows allowed client side
 const FREQUENCY = WAIT_TIME * 1000 / NUM_ENTRIES; // frequency of topic send out
 // temp options
-const DEFAULT_SUB = [1,2,3];                      // defualt subscriptions for temp users
+const DEFAULT_SUB = [0,1,2,3];                      // defualt subscriptions for temp users
 const DEFAULT_SUBIDS = false;
 
 // abstract persistent and temporary topic data
