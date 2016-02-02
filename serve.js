@@ -4,7 +4,7 @@
 // Constant factors
 const WAIT_TIME  = 30;                            // time topic displayed
 const NUM_ENTRIES = 6;                            // number of dialog rows allowed client side
-const FREQUENCY = WAIT_TIME * 1000 / NUM_ENTRIES; // frequency of topic send out
+const FREQUENCY = WAIT_TIME * 2000 / NUM_ENTRIES; // frequency of topic send out
 // temp options
 const DEFAULT_SUB = [0,1,2,3];                      // defualt subscriptions for temp users
 const DEFAULT_SUBIDS = false;
@@ -68,10 +68,11 @@ var userDB = { // requires mongo and topic
                 userDB.temp.push({                                 // toMatch & Sub default to 0
                     socket: ID.socket,   toSub: doc.toSub,         // known details
                     sub: doc.subscribed, subIDs: doc.subIDs,       // persistant details
-                    toMatch: 0,          timer: 0,                 // temp details
+                    toMatch: 0,                                    // temp details
                     speed: doc.avgSpeed,                           // IDs of subscriptions
                 });
-                topic.get(ID.socket, true);                        // get topic AFTER db quary
+                topic.propose(ID.socket);
+                match.topic(ID.socket);
                 sock.io.to(ID.socket).emit('speed', doc.avgSpeed); // give client last speed
             }
         });
@@ -81,19 +82,22 @@ var userDB = { // requires mongo and topic
             socket: socketID, sub: DEFAULT_SUB,
             toSub: 0,         subIDs: DEFAULT_SUBIDS,
             speed: 0,         toMatch: 0,
-            timer: 0,
         });
-        topic.get(socketID, true);                     // get topic AFTER db quary
+        topic.propose(socketID);
+        match.topic(socketID);
     },
-    toggle: function(socket){ // stop topic.get NOTE: takes an array of sockets normally [two, sockets]
+    toggle: function(socket){ // stop prop and match NOTE: takes an array of sockets normally [two, sockets]
         for(var i=0; socket[i]; i++){
             var userNum = userDB.grabIndex(socket[i]);
             if(userNum > -1){
-                if(userDB.temp[userNum].timer){ // given the timer was counting down to add topics
-                    clearTimeout(userDB.temp[userNum].timer);
-                    userDB.temp[userNum].timer = 0;
+                if(userDB.temp[userNum].pTimer){ // given the timer was counting down to add topics
+                    clearTimeout(userDB.temp[userNum].mTimer);
+                    clearTimeout(userDB.temp[userNum].pTimer);
+                    userDB.temp[userNum].mTimer = 0;
+                    userDB.temp[userNum].pTimer = 0;
                 } else {
-                    topic.get(socket[i]);
+                    topic.propose(socket[i]);
+                    match.topic(socket[i]);
                 }   // other wise we are resubbing user to feed
             }
         }
@@ -104,18 +108,6 @@ var userDB = { // requires mongo and topic
 // distribute topics: does two things- proposes topics and matches users based on topics
 var topic = { // depends on: userDB and topicDB
     action: function(command, user, data){console.log(command + '-' + user + '-' + data);}, // replace with real command
-    get: function(socket, flipbit){                         // starts search for topics (both to sub and to have)
-        var userNum = userDB.grabIndex(socket);             // figures which element of db array for users
-        if(userNum > -1){
-            if(flipbit){ // alternate flipbit for new sub or potential match
-                topic.propose(socket);
-            } else if (userNum && userDB.temp.length > 1){  // users beside first and more than one user
-                process.nextTick(function(){match.topic(socket, 0);}); // next loop search for a match to interest
-            }
-            userDB.temp[userNum].timer = setTimeout(function(){topic.get(socket, !flipbit)}, FREQUENCY);
-            // TODO: create a propose and match timer and run the clocks async
-        }
-    },
     propose: function(socket){
         var userNum = userDB.grabIndex(socket);
         if(userNum > -1){
@@ -124,53 +116,43 @@ var topic = { // depends on: userDB and topicDB
             for( var i = 0; userDB.temp[userNum].sub[i] !== undefined; i++ ){                   // for every user sub
                 if(userDB.temp[userNum].toSub === userDB.temp[userNum].sub[i]){                 // if matches topic, avoid
                     process.nextTick(function(){topic.propose(socket);});                       // try again on next tick
-                    return;                                                                     // don't propose
+                    return;                                                                     // don't propose / short curcuit
                 }
             } // else user is not subscribbed to this topic, propose it to them
             if(topicDB.temp[userDB.temp[userNum].toSub]){
                 topic.action('topic', socket, {user:userDB.temp[userNum].toSub, text:topicDB.temp[userDB.temp[userNum].toSub]});
             }
+            userDB.temp[userNum].pTimer = setTimeout(function(){topic.propose(socket);}, FREQUENCY);
         }
     }
 }
 
 // match users based on similar topics
 var match = { // depends on: userDB, topic, topicDB
-    topic: function ( socket, targetMatch ){    // find a user with a the same topic
-        var userNum = userDB.grabIndex(socket); // find users possition in array
-        if(userNum && userDB.temp.length > 1){  // Question our own existence and whether its worth the effort
-            if(targetMatch){                    // should always have something after first run
-                var targetNum = userDB.grabIndex(targetMatch); // find array possition of target
-                if(targetNum > -1){             // sanity check: is target availible
-                    if(targetNum < userNum){match.search(socket, userNum, targetNum);}
-                    else { match.search(socket, userNum, userNum - 1);}
+    topic: function ( socket, targetID ){                         // find a user with a the same topic
+        var userNum = userDB.grabIndex(socket);                   // find users possition in array
+        if(userNum && userDB.temp.length > 1){                    // Should we be looking? zeroth and undefined users never look
+            var targetNum = userNum - 1;                          // if no target is provide, target user before us
+            if(targetID){targetNum = userDB.grabIndex(targetID);} // else target the user before last we looked at
+            if(userDB.temp[targetNum].pTimer){                    // So long as this target is also looking
+                userDB.temp[userNum].toMatch++;                   // increment match target
+                var matchSub = userDB.temp[userNum].sub[userDB.temp[userNum].toMatch]; // read match target
+                if(matchSub === undefined){                       // if match target does not exist
+                    userDB.temp[userNum].toMatch = 0;             // set target back to zero
+                    matchSub = userDB.temp[userNum].sub[0];       // set match sub to reflect new target
+                    if(matchSub === undefined){matchSub = 0;}     // default to first topic if subscribed to none
                 }
-            } else { match.search(socket, userNum, userNum - 1); } // starting search (user before this user)
-        }
-    },
-    search: function ( socket, userNum, targetNum ){  // BLOCKING, Focus is searching one topic per prospect
-        var matchSub = userDB.temp[userNum].sub[userDB.temp[userNum].toMatch];
-        if(matchSub !== undefined){
-            if(userDB.temp[targetNum].timer){                       // So long as this target is also looking
                 for (var i = 0; userDB.temp[targetNum].sub[i] !== undefined; i++){ // for every topic prospect has
-                    if(userDB.temp[targetNum].sub[i] === matchSub){ // if their topic matches up with ours
-                        var found = userDB.temp[targetNum].socket;  // who matched?
-                        userDB.temp[userNum].toMatch++;             // increment to the next possible match
+                    if(userDB.temp[targetNum].sub[i] === matchSub){                // if their topic matches up with ours
+                        var found = userDB.temp[targetNum].socket;                 // who matched?
                         topic.action('topic', socket, {user:found, text: topicDB.temp[matchSub], code:matchSub});
                         topic.action('topic', found, {user:socket, text: topicDB.temp[matchSub], code:matchSub});
-                        return;                                     // stop recursion, end madness!
                     }
                 }
             }
-        } else { return;} // given no topic we have nothing further todo
-        if(targetNum){    // so long as target id greater than being first user
-            process.nextTick(function (){match.topic(socket, topic.db[targetNum-1].user);}); // TODO: WTF?
-            //return;
-        } else {                            // If we got to first user, loop back up to imediate previous user
-            userDB.temp[userNum].toMatch++; // change what is being searched for to match
-            if(userDB.temp[userNum].sub[userDB.temp[userNum].toMatch]){ // if this user has an interest in this slot
-                process.nextTick(function(){match.topic(socket, userDB.temp[userNum-1].socket);});
-            }
+            if(targetNum){  // given we just searched someone other than the zeroth user, search the next target before them
+                userDB.temp[userNum].mTimer = setTimeout(function (){match.topic(socket, userDB.temp[targetNum-1].user);}, FREQUENCY);
+            } else { userDB.temp[userNum].mTimer = setTimeout(function(){match.topic(socket);}, FREQUENCY); }
         }
     }
 }
