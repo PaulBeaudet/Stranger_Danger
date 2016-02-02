@@ -7,7 +7,6 @@ const NUM_ENTRIES = 6;                            // number of dialog rows allow
 const FREQUENCY = WAIT_TIME * 2000 / NUM_ENTRIES; // frequency of topic send out
 // temp options
 const DEFAULT_SUB = [0,1,2,3];                      // defualt subscriptions for temp users
-const DEFAULT_SUBIDS = false;
 
 // abstract persistent and temporary topic data
 var topicDB = {                                        // depends on mongo
@@ -27,13 +26,11 @@ var topicDB = {                                        // depends on mongo
             mongo.topic.count().exec(function(err, count){ // find out which topic this will be
                 doc.index = count;                         // add unique count property to document
                 doc.author = ID.email;                     // note the author of the topic
-                var objectID = doc._id;
                 doc.save(function(err){                    // write new topic to database
                     if(err){console.log(err + ' onCreate');}
                     else {
                         var userNum = userDB.grabIndex(ID.socket);  // not the index number of this user
                         topicDB.temp.push(text);                    // also add topic in temorary array
-                        userDB.temp[userNum].subIDs.push(objectID); // add to cached user subscriptions
                         userDB.temp[userNum].sub.push(count)        // add to cached user subscriptions
                     }
                 });
@@ -50,7 +47,6 @@ var userDB = { // requires mongo and topic
             var userNum = userDB.grabIndex(ID.socket);
             var dataUpdate = { subscribed: userDB.temp[userNum].sub,
                                toSub: userDB.temp[userNum].toSub,
-                               subIDs: userDB.temp[userNum].subIDs,
                                avgSpeed: userDB.temp[userNum].speed };
             mongo.user.findOneAndUpdate({email: ID.email}, dataUpdate, function(err, doc){
                 if(err){ console.log(err + '-userDB.logout');
@@ -67,8 +63,7 @@ var userDB = { // requires mongo and topic
             } else if (doc){
                 userDB.temp.push({                                 // toMatch & Sub default to 0
                     socket: ID.socket,   toSub: doc.toSub,         // known details
-                    sub: doc.subscribed, subIDs: doc.subIDs,       // persistant details
-                    toMatch: 0,                                    // temp details
+                    sub: doc.subscribed, toMatch: 0,
                     speed: doc.avgSpeed,                           // IDs of subscriptions
                 });
                 topic.propose(ID.socket);
@@ -80,7 +75,7 @@ var userDB = { // requires mongo and topic
     fake: function(socketID){
         userDB.temp.push({
             socket: socketID, sub: DEFAULT_SUB,
-            toSub: 0,         subIDs: DEFAULT_SUBIDS,
+            toSub: 0,
             speed: 0,         toMatch: 0,
         });
         topic.propose(socketID);
@@ -247,7 +242,6 @@ var mongo = { // depends on: mongoose
             email: { type: String, required: '{PATH} is required', unique: true },
             password: { type: String, required: '{PATH} is required' },
             subscribed: [Number],                   // topic ids user is subscribed to
-            subIDs: [String],                       // IDs of subscriptions (objectId of topic)
             toSub: { type: Number, default: 0 },    // search possition for subscription (w/user)
             accountType: { type: String },          // temp, premium, moderator, admin, ect
             avgSpeed: { type: Number, default: 0},  // averaged out speed of user
