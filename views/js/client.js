@@ -36,11 +36,7 @@ var edit = { // dep: time, textBar, $
         }  // checks to see if a scoot is needed upon typing
         time.from(edit.row, YOU);
     },
-    type: function(data){
-        var thisRow = 0;
-        if(data.row){thisRow = data.row;} else{thisRow = edit.row;}
-        $('#dialog' + thisRow).html(data.text);
-    },
+    type: function(text){$('#dialog' + edit.row).html(text);},
     myTurn: function(){
         send.mode = CHAT;             // allow user to type
         textBar.changeAction(CHAT);   // clear text box and use correct dialog
@@ -185,7 +181,7 @@ var send = { // dep: sock, change, edit, textBar
                 edit.onStart();     // edit.onstart once
                 send.empty = false;
             }
-            edit.type({text: $('#textEntry').val(), row: 0});                 // print on own screen
+            edit.type($('#textEntry').val());                              // print on own screen
             sock.et.emit("chat", {text: $('#textEntry').val(), id: send.to}); // send to other user
         }
         else if(send.mode === BLOCK){ $('#textEntry').val(''); }              // Block input in this case

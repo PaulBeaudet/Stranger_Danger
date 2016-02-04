@@ -43,8 +43,8 @@ var topicDB = {                                        // depends on mongo
 var userDB = { // requires mongo and topic
     temp: [],  // in ram user data
     logout: function(ID){
+        var idx = userDB.grabIndex(ID.socket);
         if(ID.email){
-            var idx = userDB.grabIndex(ID.socket);
             var dataUpdate = { subscribed: userDB.temp[idx].sub,
                                toSub: userDB.temp[idx].toSub,
                                avgSpeed: userDB.temp[idx].speed };
@@ -54,6 +54,8 @@ var userDB = { // requires mongo and topic
                     userDB.temp.splice(userDB.grabIndex(ID.socket), 1);
                 }
             })
+        } else {
+            userDB.temp.splice(idx, 1); // remove this user from temp array
         }
     },
     grabIndex: function(socket){return userDB.temp.map(function(each){return each.socket;}).indexOf(socket);},
@@ -209,7 +211,7 @@ var sock = { // depends on socket.io, reaction, and topic
                     }
                 });
                 // -- Real time chat --
-                socket.on('chat', function (rtt){sock.io.to(rtt.id).emit('toMe', {text: rtt.text, row: 0});});
+                socket.on('chat', function (rtt){sock.io.to(rtt.id).emit('toMe', rtt.text);});
                 socket.on('toOther', function (id){sock.io.to(id).emit('yourTurn');}); // signal turn
                 socket.on('endChat', function (id){
                     userDB.toggle([id, socket.id]);
