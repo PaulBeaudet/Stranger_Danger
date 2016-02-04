@@ -276,7 +276,8 @@ var userAct = { // dep: mongo
                         res.render(render, {accountType: user.accountType}); // render page for this account
                     } else {
                         req.session.reset();
-                        res.redirect('/#signup');
+                        req.session.user = {accountType: 'temp'};  // require temp in cookie
+                        res.render(render, {accountType: 'temp'}); // respond rendering with type
                     }
                 });
             } else { // given there is no session user, make one with a temp account
@@ -338,6 +339,8 @@ var serve = { // depends on everything
         router.get('/login', function ( req, res ){res.render('login', {csrfToken: req.csrfToken()});});
         router.post('/login', userAct.login);         // handle logins
         router.get('/topic', userAct.auth('topic'));  // must be authenticated for this page
+        router.get('/temp', userAct.auth('topic'));
+        router.get('/trial', userAct.auth('topic'));
         app.use(router);                              // tell app what router to use
         topic.action = sock.emitTo;                   // assign how topics are sent
         sock.listen(http);                            // listen for socket connections
