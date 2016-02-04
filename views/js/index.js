@@ -17,6 +17,9 @@ var SEND_TIMER = NUM_ENTRIES;
 var TOPIC = 0; // users post or select topics
 var CHAT  = 1; // two users chat one on one
 var BLOCK = 2; // blocks user entry, waiting for either their topic to expire or chatting partner to finish
+// Perspective text
+var OTHER = 'other';
+var YOU = 'you';
 
 // Methods revolving around tracking possition of row
 var edit = { // dep: time, textBar, $
@@ -31,7 +34,7 @@ var edit = { // dep: time, textBar, $
             edit.scoot();
             edit.row--;
         }  // checks to see if a scoot is needed upon typing
-        time.from(edit.row, "You");
+        time.from(edit.row, YOU);
     },
     type: function(data){
         var thisRow = 0;
@@ -41,7 +44,7 @@ var edit = { // dep: time, textBar, $
     myTurn: function(){
         send.mode = CHAT;             // allow user to type
         textBar.changeAction(CHAT);   // clear text box and use correct dialog
-        time.from(edit.row, "other"); // write other onto the last row
+        time.from(edit.row, OTHER); // write other onto the last row
         edit.increment();             // increment place to write to
         time.countDown(SEND_TIMER, 'Your turn - ', send.passOn);     // time out input
     },
@@ -54,6 +57,10 @@ var edit = { // dep: time, textBar, $
         $( '#timer' + (NUM_ENTRIES -1) ).html('');
     }
 }
+
+var ICON = 'glyphicon-'; // general class name for bootstrap icons
+var CHATGLYPH = 'user';  // symbol for impending chat
+var SUBGLYPH = 'plus';   // symbol for adding a subscription
 
 // changeition handling of visual elements
 var change = { // dep: send, time, textBar
@@ -76,44 +83,42 @@ var change = { // dep: send, time, textBar
         edit.row = 1;                                         // make sure editing starts on the correct row
         for(var row = 0; row < NUM_ENTRIES; row++){           // remove everything that was on topic screen
             $('#button' + row).css('visibility', 'hidden');   // hide buttons
-            $('#icon' + row).removeClass('glyphicon-remove'); // reset type of icon
-            $('#icon' + row).removeClass('glyphicon-plus');   // reset type of icon
+            $('#icon' + row).removeClass(ICON + CHATGLYPH);   // reset type of icon
+            $('#icon' + row).removeClass(ICON + SUBGLYPH);    // reset type of icon
             if(row){$('#dialog' + row).html('');}             // clear dialog
             else{$('#dialog0').html(topic.pending);}          // set topic to first dialog item
         }
         if(data.first){
             send.mode = CHAT;
-            time.from(1, "You");
+            time.from(1, YOU);
             time.countDown(SEND_TIMER, 'Your turn - ', send.passOn); // time out input
         } else {
             send.mode = BLOCK;
-            time.from(1, "other");
+            time.from(1, OTHER);
         }
         textBar.changeAction(send.mode);
     },
 }
-
-var CHATGLYPH = 'user'; // || plus || remove
-var SUBGLYPH = 'plus';
 
 // logic for recieving topics to subscribe to and matched topics
 var topic = { // dep: time, $
     pending: '',
     firstEmpty: function(){
         for( var i=0; i < NUM_ENTRIES; i++){
-            if($('#icon' + i).hasClass('glyphicon-' + SUBGLYPH) || $('#icon' + i).hasClass('glyphicon-' + CHATGLYPH) ){;}
+            if($('#icon'+i).hasClass(ICON + SUBGLYPH) || $('#icon'+i).hasClass(ICON + CHATGLYPH)){;}
             else{return i;} // given nothing in this row signal it is free
-        } // if the rows have been exhusted write to first row
+        }                   // if the rows have been exhusted write to first row
         return 0;
     },
     get: function(get){
+        console.log('recieved topic ' + get.text + ' from ' + get.user);
         for(var i = 0; i < NUM_ENTRIES; i++){if(get.text === $('#dialog' + i).html()){return;}} // reject if existing
         var row = topic.firstEmpty();                                     // note first available row
         if($.type(get.user) === 'string'){                                // detect match situation
-            $('#icon' + row).addClass('glyphicon-' + CHATGLYPH);          // add "decline" icon
+            $('#icon' + row).addClass(ICON + CHATGLYPH);          // add "decline" icon
             time.countDown(row, 'Cancel -', function(){topic.start(row, get.user);}); // Set timer on this row
         } else {                                                          // given subbable
-            $('#icon' + row).addClass('glyphicon-' + SUBGLYPH);           // add the plus icon
+            $('#icon' + row).addClass(ICON + SUBGLYPH);           // add the plus icon
             $('#button' + row).click(function(){                          // If sub button is clicked
                 sock.et.emit('sub', get.user);                            // subscribe event
                 inactivity.status = false;                                // note activity
@@ -124,10 +129,10 @@ var topic = { // dep: time, $
         $('#button' + row).css('visibility', 'visible');
         $('#dialog' + row).html(get.text);
     },
-    done: function(row, icon) {                            // action to occur on count end, removes entry
+    done: function(row, glyph) {                           // action to occur on count end, removes entry
         clearTimeout(time.inProg[row]);                    // deactivate timeout if active
         time.counter[row] = TOPIC_TIMEOUT;                 // reset timer
-        $('#icon' + row).removeClass('glyphicon-' + icon); // reset so sub or decline can be reintroduced
+        $('#icon' + row).removeClass(ICON + glyph);        // reset so sub or decline can be reintroduced
         $('#button' + row).off('click');                   // remove click event
         $('#button' + row).css('visibility', 'hidden');    // on end hide button
         $('#dialog' + row).html('');                       // on end remove dialog
@@ -135,6 +140,7 @@ var topic = { // dep: time, $
     start: function(row, talkingTo){               // at this juncture we will need to start the conversation
         topic.pending = $('#dialog' + row).html(); // store topic dialog
         topic.done(row, CHATGLYPH);                // remove this item from list
+        // todo remove all topics from the list
         sock.et.emit("initTopic", talkingTo);      // signal which user that needs to be connected with
     }
 }

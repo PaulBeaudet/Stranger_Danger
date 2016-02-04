@@ -117,7 +117,7 @@ var topic = { // depends on: userDB and topicDB
             if(topicDB.temp[userDB.temp[idx].toSub]){
                 topic.action('topic', socket, {user:userDB.temp[idx].toSub, text:topicDB.temp[userDB.temp[idx].toSub]});
             }
-            userDB.temp[idx].pTimer = setTimeout(function(){topic.propose(socket);}, FREQUENCY);
+            userDB.temp[idx].pTimer = setTimeout(function(){topic.propose(socket);}, 17500);
         }
     }
 }
@@ -146,7 +146,7 @@ function match(socket, targetID){                          // find a user with a
                 }
             }
         }
-        userDB.temp[idx].mTimer = setTimeout(function(){match(socket, targetID);}, FREQUENCY);
+        userDB.temp[idx].mTimer = setTimeout(function(){match(socket, targetID);}, 17000);
     }
 }
 
