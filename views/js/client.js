@@ -1,4 +1,4 @@
-// index.js ~ Copyright 2015 Paul Beaudet ~ MIT License see LICENSE_MIT for detials
+// client.js ~ Copyright 2015 Paul Beaudet ~ MIT License see LICENSE_MIT for detials
 // Constants, these can change the behavior of the application
 // Timing constants
 var MINUTE = 60000;               // Milliseconds in a minute
